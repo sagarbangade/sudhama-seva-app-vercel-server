@@ -26,13 +26,15 @@ const donorSchema = new mongoose.Schema({
   },
   googleMapLink: {
     type: String,
-    required: [true, 'Google Maps link is required'],
     trim: true
   },
   date: {
     type: Date,
-    required: [true, 'Date is required'],
     default: Date.now
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -50,4 +52,4 @@ donorSchema.index({ createdBy: 1 }); // For filtering by creator
 
 const Donor = mongoose.model('Donor', donorSchema);
 
-module.exports = Donor; 
+module.exports = Donor;

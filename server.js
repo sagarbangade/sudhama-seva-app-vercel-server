@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const { scheduleDonationInitialization } = require('./utils/cronJobs');
 const connectDB = require('./config/database');
 require('dotenv').config();
 
@@ -18,6 +19,9 @@ app.use(morgan('dev'));
 // Connect to MongoDB
 connectDB();
 
+// Initialize cron jobs
+scheduleDonationInitialization();
+
 // Handle MongoDB connection events
 mongoose.connection.on('error', (err) => {
   console.error('MongoDB connection error:', err);
@@ -30,9 +34,11 @@ mongoose.connection.on('disconnected', () => {
 // Routes
 const authRoutes = require('./routes/auth.routes');
 const donorRoutes = require('./routes/donor.routes');
+const donationRoutes = require('./routes/donation.routes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/donors', donorRoutes);
+app.use('/api/donations', donationRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -52,4 +58,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-}); 
+});

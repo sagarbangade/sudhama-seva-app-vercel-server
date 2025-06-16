@@ -8,6 +8,7 @@ const {
   updateDonation,
   deleteDonation
 } = require('../controllers/donation.controller');
+const { initializeMonthlyDonations } = require('../utils/cronJobs');
 
 const router = express.Router();
 
@@ -38,5 +39,23 @@ router.get('/', auth, getDonations);
 router.get('/monthly-status', auth, getMonthlyStatus);
 router.put('/:id', auth, donationValidation, updateDonation);
 router.delete('/:id', auth, deleteDonation);
+
+// Manual initialization route (admin only)
+router.post('/initialize-monthly', auth, async (req, res) => {
+  try {
+    await initializeMonthlyDonations();
+    res.json({
+      success: true,
+      message: 'Monthly donations initialized successfully'
+    });
+  } catch (error) {
+    console.error('Error initializing monthly donations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error initializing monthly donations',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
 module.exports = router;

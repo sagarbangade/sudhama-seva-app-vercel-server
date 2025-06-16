@@ -17,12 +17,14 @@ const donationSchema = new mongoose.Schema({
   },
   collectionMonth: {
     type: String,  // Format: "YYYY-MM"
-    required: true
+    required: true,
+    index: true
   },
   status: {
     type: String,
     enum: ['pending', 'collected', 'skipped'],
-    default: 'pending'
+    default: 'pending',
+    required: true
   },
   collectedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -39,6 +41,11 @@ const donationSchema = new mongoose.Schema({
 
 // Create compound index to ensure one donation per donor per month
 donationSchema.index({ donor: 1, collectionMonth: 1 }, { unique: true });
+
+// Create indexes for efficient querying
+donationSchema.index({ status: 1 });
+donationSchema.index({ collectionDate: 1 });
+donationSchema.index({ collectedBy: 1 });
 
 const Donation = mongoose.model('Donation', donationSchema);
 
