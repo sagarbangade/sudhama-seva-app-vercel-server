@@ -270,7 +270,10 @@ exports.getMonthlyStatus = async (req, res) => {
 
 // Update donation
 exports.updateDonation = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
+    session.startTransaction();
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -279,7 +282,7 @@ exports.updateDonation = async (req, res) => {
       });
     }
 
-    const donation = await Donation.findById(req.params.id);
+    const donation = await Donation.findById(req.params.id).session(session);
     
     if (!donation) {
       return res.status(404).json({
@@ -288,11 +291,30 @@ exports.updateDonation = async (req, res) => {
       });
     }
 
-    // Update allowed fields
+    // Check if donor exists and is active
+    const donor = await Donor.findById(donation.donor).session(session);
+    if (!donor || !donor.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Associated donor is not active or does not exist'
+      });
+    }
+
+    // Validate status changes
     const { amount, status, notes } = req.body;
-    if (amount !== undefined) donation.amount = amount;
-    if (status !== undefined) donation.status = status;
-    if (notes !== undefined) donation.notes = notes;
+    if (status === 'collected' && (!amount || amount <= 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid amount is required for collected status'
+      });
+    }
+
+    if (status === 'skipped' && (!notes || !notes.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Notes are required when skipping collection'
+      });
+    }
 
     // Add validation for collection date change
     if (req.body.collectionDate) {
@@ -303,7 +325,7 @@ exports.updateDonation = async (req, res) => {
         const existingDonation = await Donation.findOne({
           donor: donation.donor,
           collectionMonth: newMonth
-        });
+        }).session(session);
         
         if (existingDonation) {
           return res.status(400).json({
@@ -311,10 +333,20 @@ exports.updateDonation = async (req, res) => {
             message: 'Donation record already exists for the new month'
           });
         }
+        donation.collectionMonth = newMonth;
       }
     }
 
-    await donation.save();
+    // Update fields
+    if (amount !== undefined) donation.amount = amount;
+    if (status !== undefined) donation.status = status;
+    if (notes !== undefined) donation.notes = notes;
+    if (req.body.collectionDate) donation.collectionDate = req.body.collectionDate;
+    if (req.body.collectionTime) donation.collectionTime = req.body.collectionTime;
+
+    await donation.save({ session });
+    await session.commitTransaction();
+
     await donation.populate([
       { path: 'donor', select: 'name hundiNo' },
       { path: 'collectedBy', select: 'name email' }
@@ -325,12 +357,15 @@ exports.updateDonation = async (req, res) => {
       data: { donation }
     });
   } catch (error) {
+    await session.abortTransaction();
     console.error('Update donation error:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating donation record',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  } finally {
+    session.endSession();
   }
 };
 
