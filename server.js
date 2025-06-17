@@ -44,7 +44,12 @@ app.use('/api/groups', groupRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+  res.status(200).send('OK');
+});
+
+// Lightweight health check endpoint for uptime monitoring
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
 });
 
 // Error handling middleware
