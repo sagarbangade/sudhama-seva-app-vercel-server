@@ -68,19 +68,88 @@ const {
  *         description: Not authorized
  * 
  *   get:
- *     summary: Get all groups
+ *     summary: Get all groups with pagination and search
  *     tags: [Groups]
  *     security:
  *       - BearerAuth: []
  *     parameters:
  *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search groups by name, area, or description
+ *       - in: query
  *         name: isActive
  *         schema:
  *           type: boolean
+ *         description: Filter by active/inactive status
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           default: name
+ *         description: Sort field (e.g., name, -name for descending)
+ *     responses:
+ *       200:
+ *         description: List of groups retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     groups:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Group'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                         page:
+ *                           type: integer
+ *                         pages:
+ *                           type: integer
+ *
+ * /api/groups/{id}:
+ *   get:
+ *     summary: Get group by ID with paginated donors
+ *     tags: [Groups]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
+ *         description: Search donors by name, hundi number, or mobile number
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter donors by active/inactive status
  *       - in: query
  *         name: page
  *         schema:
@@ -91,70 +160,49 @@ const {
  *         schema:
  *           type: integer
  *           default: 10
- *     responses:
- *       200:
- *         description: List of groups retrieved successfully
- */
-
-/**
- * @swagger
- * /api/groups/{id}:
- *   get:
- *     summary: Get group by ID
- *     tags: [Groups]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
+ *       - in: query
+ *         name: sort
  *         schema:
  *           type: string
+ *           default: name
+ *         description: Sort field for donors list
  *     responses:
  *       200:
- *         description: Group retrieved successfully
- *       404:
- *         description: Group not found
- * 
- *   put:
- *     summary: Update group
- *     tags: [Groups]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Group'
- *     responses:
- *       200:
- *         description: Group updated successfully
- *       404:
- *         description: Group not found
- * 
- *   delete:
- *     summary: Delete group
- *     tags: [Groups]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Group deleted successfully
- *       404:
- *         description: Group not found
+ *         description: Group retrieved successfully with paginated donors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     group:
+ *                       $ref: '#/components/schemas/Group'
+ *                     donors:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Donor'
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         totalDonors:
+ *                           type: integer
+ *                         activeDonors:
+ *                           type: integer
+ *                         inactiveDonors:
+ *                           type: integer
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                         page:
+ *                           type: integer
+ *                         pages:
+ *                           type: integer
  */
 
 const router = express.Router();

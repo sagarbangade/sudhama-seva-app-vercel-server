@@ -69,12 +69,44 @@ exports.createGroup = async (req, res) => {
 // Get all groups
 exports.getGroups = async (req, res) => {
   try {
-    const groups = await Group.find()
-      .populate('createdBy', 'name email');
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const sort = req.query.sort || 'name';
+    
+    // Build filter object
+    const filter = {};
+    if (req.query.search) {
+      filter.$or = [
+        { name: { $regex: req.query.search, $options: 'i' } },
+        { area: { $regex: req.query.search, $options: 'i' } },
+        { description: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+    if (req.query.isActive !== undefined) {
+      filter.isActive = req.query.isActive === 'true';
+    }
+
+    // Get total count for pagination
+    const total = await Group.countDocuments(filter);
+
+    // Get groups with pagination and sorting
+    const groups = await Group.find(filter)
+      .populate('createdBy', 'name email')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
-      data: { groups }
+      data: {
+        groups,
+        pagination: {
+          total,
+          page,
+          pages: Math.ceil(total / limit)
+        }
+      }
     });
   } catch (error) {
     console.error('Get groups error:', error);
@@ -89,6 +121,11 @@ exports.getGroups = async (req, res) => {
 // Get group by ID with its donors
 exports.getGroupById = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const sort = req.query.sort || 'name';
+
     const group = await Group.findById(req.params.id)
       .populate('createdBy', 'name email');
 
@@ -99,15 +136,50 @@ exports.getGroupById = async (req, res) => {
       });
     }
 
-    // Get donors in this group
-    const donors = await Donor.find({ group: req.params.id })
-      .populate('createdBy', 'name email');
+    // Build donor filter
+    const donorFilter = { group: req.params.id };
+    if (req.query.search) {
+      donorFilter.$or = [
+        { name: { $regex: req.query.search, $options: 'i' } },
+        { hundiNo: { $regex: req.query.search, $options: 'i' } },
+        { mobileNumber: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+    if (req.query.isActive !== undefined) {
+      donorFilter.isActive = req.query.isActive === 'true';
+    }
+
+    // Get total donors count for pagination
+    const totalDonors = await Donor.countDocuments(donorFilter);
+
+    // Get donors with pagination and sorting
+    const donors = await Donor.find(donorFilter)
+      .populate('createdBy', 'name email')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    // Get total active and inactive donors count
+    const [activeDonors, inactiveDonors] = await Promise.all([
+      Donor.countDocuments({ ...donorFilter, isActive: true }),
+      Donor.countDocuments({ ...donorFilter, isActive: false })
+    ]);
 
     res.json({
       success: true,
       data: { 
         group,
-        donors
+        donors,
+        stats: {
+          totalDonors,
+          activeDonors,
+          inactiveDonors
+        },
+        pagination: {
+          total: totalDonors,
+          page,
+          pages: Math.ceil(totalDonors / limit)
+        }
       }
     });
   } catch (error) {

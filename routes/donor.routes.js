@@ -76,34 +76,82 @@ const {
  *         description: Not authorized
  * 
  *   get:
- *     summary: Get all donors with pagination and filters
+ *     summary: Get all donors with pagination, search, and filters
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
  *     parameters:
  *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search donors by name, hundi number, or mobile number
+ *       - in: query
+ *         name: group
+ *         schema:
+ *           type: string
+ *         description: Filter by group ID
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date (YYYY-MM-DD)
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active/inactive status
+ *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
+ *         description: Page number for pagination
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
+ *         description: Number of items per page
  *       - in: query
- *         name: search
+ *         name: sort
  *         schema:
  *           type: string
- *       - in: query
- *         name: group
- *         schema:
- *           type: string
+ *           default: "-date"
+ *         description: Sort field (e.g., name, -date for descending)
  *     responses:
  *       200:
  *         description: List of donors retrieved successfully
- *       401:
- *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     donors:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Donor'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                         page:
+ *                           type: integer
+ *                         pages:
+ *                           type: integer
  */
 
 /**

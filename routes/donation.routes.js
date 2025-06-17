@@ -115,7 +115,7 @@ const { initializeMonthlyDonations } = require('../utils/cronJobs');
  * @swagger
  * /api/donations/monthly-status:
  *   get:
- *     summary: Get monthly donation status
+ *     summary: Get monthly donation status with pagination and search
  *     tags: [Donations]
  *     security:
  *       - BearerAuth: []
@@ -132,9 +132,84 @@ const { initializeMonthlyDonations } = require('../utils/cronJobs');
  *           type: integer
  *           minimum: 1
  *           maximum: 12
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search donors by name, hundi number, or mobile number
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
  *     responses:
  *       200:
  *         description: Monthly status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     year:
+ *                       type: integer
+ *                     month:
+ *                       type: integer
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                         collected:
+ *                           type: integer
+ *                         pending:
+ *                           type: integer
+ *                         skipped:
+ *                           type: integer
+ *                         totalAmount:
+ *                           type: number
+ *                     statusReport:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           donor:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                               name:
+ *                                 type: string
+ *                               hundiNo:
+ *                                 type: string
+ *                               mobileNumber:
+ *                                 type: string
+ *                           status:
+ *                             type: string
+ *                             enum: [pending, collected, skipped]
+ *                           donation:
+ *                             type: object
+ *                             nullable: true
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                         page:
+ *                           type: integer
+ *                         pages:
+ *                           type: integer
  */
 
 /**

@@ -125,7 +125,7 @@ exports.getDonations = async (req, res) => {
 // Get monthly status
 exports.getMonthlyStatus = async (req, res) => {
   try {
-    const { year, month } = req.query;
+    const { year, month, search, page = 1, limit = 10 } = req.query;
     
     if (!year || !month) {
       return res.status(400).json({
@@ -136,12 +136,31 @@ exports.getMonthlyStatus = async (req, res) => {
 
     const collectionMonth = `${year}-${String(month).padStart(2, '0')}`;
     
-    // Get all active donors
-    const donors = await Donor.find({ isActive: true });
+    // Build donor filter
+    const donorFilter = { isActive: true };
+    if (search) {
+      donorFilter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { hundiNo: { $regex: search, $options: 'i' } },
+        { mobileNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Get total count for pagination
+    const totalDonors = await Donor.countDocuments(donorFilter);
+
+    // Get paginated donors
+    const skip = (page - 1) * limit;
+    const donors = await Donor.find(donorFilter)
+      .sort({ name: 1 })
+      .skip(skip)
+      .limit(limit);
     
-    // Get donations for the month
-    const donations = await Donation.find({ collectionMonth })
-      .populate('donor', 'name hundiNo');
+    // Get donations for these donors
+    const donations = await Donation.find({
+      collectionMonth,
+      donor: { $in: donors.map(d => d._id) }
+    }).populate('donor', 'name hundiNo');
     
     // Create status map
     const donationMap = new Map(donations.map(d => [d.donor._id.toString(), d]));
@@ -151,7 +170,8 @@ exports.getMonthlyStatus = async (req, res) => {
       donor: {
         id: donor._id,
         name: donor.name,
-        hundiNo: donor.hundiNo
+        hundiNo: donor.hundiNo,
+        mobileNumber: donor.mobileNumber
       },
       status: donationMap.has(donor._id.toString()) 
         ? donationMap.get(donor._id.toString()).status
@@ -159,13 +179,17 @@ exports.getMonthlyStatus = async (req, res) => {
       donation: donationMap.get(donor._id.toString()) || null
     }));
 
+    // Get all donations for statistics (not affected by pagination)
+    const allDonations = await Donation.find({ collectionMonth });
+    const allActiveDonors = await Donor.countDocuments({ isActive: true });
+
     // Calculate statistics
     const stats = {
-      total: donors.length,
-      collected: donations.filter(d => d.status === 'collected').length,
-      pending: donors.length - donations.length,
-      skipped: donations.filter(d => d.status === 'skipped').length,
-      totalAmount: donations.reduce((sum, d) => sum + (d.status === 'collected' ? d.amount : 0), 0)
+      total: allActiveDonors,
+      collected: allDonations.filter(d => d.status === 'collected').length,
+      pending: allActiveDonors - allDonations.length,
+      skipped: allDonations.filter(d => d.status === 'skipped').length,
+      totalAmount: allDonations.reduce((sum, d) => sum + (d.status === 'collected' ? d.amount : 0), 0)
     };
 
     res.json({
@@ -174,7 +198,12 @@ exports.getMonthlyStatus = async (req, res) => {
         year: parseInt(year),
         month: parseInt(month),
         stats,
-        statusReport
+        statusReport,
+        pagination: {
+          total: totalDonors,
+          page: parseInt(page),
+          pages: Math.ceil(totalDonors / limit)
+        }
       }
     });
   } catch (error) {
