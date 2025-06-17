@@ -1,5 +1,5 @@
 const express = require('express');
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const { auth } = require('../middleware/auth.middleware');
 const {
   createDonation,
@@ -55,10 +55,16 @@ const donationValidation = [
     .trim()
 ];
 
+// Add this validation
+const monthlyStatusValidation = [
+  query('year').isInt().withMessage('Valid year required'),
+  query('month').isInt({ min: 1, max: 12 }).withMessage('Valid month required')
+];
+
 // Routes
 router.post('/', auth, donationValidation, createDonation);
 router.get('/', auth, getDonations);
-router.get('/monthly-status', auth, getMonthlyStatus);
+router.get('/monthly-status', auth, monthlyStatusValidation, getMonthlyStatus);
 router.put('/:id', auth, donationValidation, updateDonation);
 router.delete('/:id', auth, deleteDonation);
 

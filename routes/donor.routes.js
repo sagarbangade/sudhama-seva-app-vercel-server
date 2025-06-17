@@ -32,8 +32,8 @@ const donorValidation = [
     .notEmpty()
     .withMessage('Address is required'),
   body('googleMapLink')
-  .notEmpty()
-  .withMessage('Google Map Link is required'),
+    .optional()
+    .trim(),
   body('group')
     .notEmpty()
     .withMessage('Group is required')
