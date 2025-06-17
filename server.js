@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 const { scheduleDonationInitialization } = require('./utils/cronJobs');
 const connectDB = require('./config/database');
 require('dotenv').config();
@@ -19,6 +21,13 @@ app.use(cors({
 }));
 app.use(helmet());
 app.use(morgan('dev'));
+
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // Connect to MongoDB
 connectDB();
