@@ -16,8 +16,9 @@ const auth = async (req, res, next) => {
     try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      // Add token expiry check
-      if (decoded.exp < Date.now() / 1000) {
+      
+      // Fix token expiry check
+      if (Math.floor(Date.now() / 1000) > decoded.exp) {
         return res.status(401).json({
           success: false,
           message: 'Token has expired'

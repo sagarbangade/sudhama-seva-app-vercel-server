@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Group = require('../models/group.model');
 const Donor = require('../models/donor.model');
+const mongoose = require('mongoose');
 
 // Create initial groups
 exports.initializeDefaultGroups = async (userId) => {
@@ -282,7 +283,10 @@ exports.deleteGroup = async (req, res) => {
 
 // Assign donors to group
 exports.assignDonorsToGroup = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
+    session.startTransaction();
+    
     const { donorIds } = req.body;
     const groupId = req.params.id;
 
@@ -295,22 +299,52 @@ exports.assignDonorsToGroup = async (req, res) => {
       });
     }
 
-    // Update all donors
+    // Validate donors exist and are active
+    const donors = await Donor.find({
+      _id: { $in: donorIds }
+    });
+
+    if (donors.length !== donorIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'One or more donors not found'
+      });
+    }
+
+    const inactiveDonors = donors.filter(donor => !donor.isActive);
+    if (inactiveDonors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot assign inactive donors to group',
+        inactiveDonors: inactiveDonors.map(d => ({
+          id: d._id,
+          name: d.name,
+          hundiNo: d.hundiNo
+        }))
+      });
+    }
+
+    // Update all donors within transaction
     await Donor.updateMany(
       { _id: { $in: donorIds } },
-      { $set: { group: groupId } }
+      { $set: { group: groupId } },
+      { session }
     );
 
+    await session.commitTransaction();
     res.json({
       success: true,
       message: 'Donors assigned to group successfully'
     });
   } catch (error) {
+    await session.abortTransaction();
     console.error('Assign donors error:', error);
     res.status(500).json({
       success: false,
       message: 'Error assigning donors to group',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  } finally {
+    session.endSession();
   }
 };

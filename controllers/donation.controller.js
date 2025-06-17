@@ -1,10 +1,14 @@
 const { validationResult } = require('express-validator');
 const Donation = require('../models/donation.model');
 const Donor = require('../models/donor.model');
+const mongoose = require('mongoose');
 
 // Create a new donation record
 exports.createDonation = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
+    session.startTransaction();
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -13,7 +17,32 @@ exports.createDonation = async (req, res) => {
       });
     }
 
-    const { donorId, amount, collectionDate, status, notes } = req.body;
+    const { donorId, amount, collectionDate, status, notes, collectionTime } = req.body;
+
+    // Check if donor exists and is active
+    const donor = await Donor.findById(donorId);
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donor not found'
+      });
+    }
+
+    if (!donor.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot create donation for inactive donor'
+      });
+    }
+
+    // Validate collection time format
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(collectionTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid collection time format. Use HH:mm'
+      });
+    }
 
     // Format collection month (YYYY-MM)
     const date = new Date(collectionDate);
@@ -23,7 +52,7 @@ exports.createDonation = async (req, res) => {
     const existingDonation = await Donation.findOne({
       donor: donorId,
       collectionMonth
-    });
+    }).session(session);
 
     if (existingDonation) {
       return res.status(400).json({
@@ -32,32 +61,55 @@ exports.createDonation = async (req, res) => {
       });
     }
 
-    const donation = await Donation.create({
+    // Validate amount for collected status
+    if (status === 'collected' && (!amount || amount <= 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid amount is required for collected status'
+      });
+    }
+
+    // Validate notes for skipped status
+    if (status === 'skipped' && (!notes || !notes.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Notes are required when skipping collection'
+      });
+    }
+
+    const donation = await Donation.create([{
       donor: donorId,
-      amount,
+      amount: status === 'collected' ? amount : 0,
       collectionDate,
+      collectionTime,
       collectionMonth,
       status,
       notes,
       collectedBy: req.user.id
-    });
+    }], { session });
 
-    await donation.populate([
-      { path: 'donor', select: 'name hundiNo' },
-      { path: 'collectedBy', select: 'name email' }
-    ]);
+    await session.commitTransaction();
+
+    const populatedDonation = await Donation.findById(donation[0]._id)
+      .populate([
+        { path: 'donor', select: 'name hundiNo' },
+        { path: 'collectedBy', select: 'name email' }
+      ]);
 
     res.status(201).json({
       success: true,
-      data: { donation }
+      data: { donation: populatedDonation }
     });
   } catch (error) {
+    await session.abortTransaction();
     console.error('Create donation error:', error);
     res.status(500).json({
       success: false,
       message: 'Error creating donation record',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  } finally {
+    session.endSession();
   }
 };
 
