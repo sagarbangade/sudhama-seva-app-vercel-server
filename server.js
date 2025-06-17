@@ -35,10 +35,12 @@ mongoose.connection.on('disconnected', () => {
 const authRoutes = require('./routes/auth.routes');
 const donorRoutes = require('./routes/donor.routes');
 const donationRoutes = require('./routes/donation.routes');
+const groupRoutes = require('./routes/group.routes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/donors', donorRoutes);
 app.use('/api/donations', donationRoutes);
+app.use('/api/groups', groupRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

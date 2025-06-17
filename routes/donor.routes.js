@@ -19,6 +19,8 @@ const donorValidation = [
     .withMessage('Hundi number is required'),
   body('name')
     .trim()
+    .notEmpty()
+    .withMessage('Name is required')
     .isLength({ min: 2 })
     .withMessage('Name must be at least 2 characters long'),
   body('mobileNumber')
@@ -30,12 +32,13 @@ const donorValidation = [
     .notEmpty()
     .withMessage('Address is required'),
   body('googleMapLink')
-    .optional()
-    .trim(),
-  body('date')
-    .optional()
-    .isISO8601()
-    .withMessage('Invalid date format')
+  .notEmpty()
+  .withMessage('Google Map Link is required'),
+  body('group')
+    .notEmpty()
+    .withMessage('Group is required')
+    .isMongoId()
+    .withMessage('Invalid group ID')
 ];
 
 // Routes

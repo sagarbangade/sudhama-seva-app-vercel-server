@@ -213,6 +213,26 @@ exports.updateDonation = async (req, res) => {
     if (status !== undefined) donation.status = status;
     if (notes !== undefined) donation.notes = notes;
 
+    // Add validation for collection date change
+    if (req.body.collectionDate) {
+      const newDate = new Date(req.body.collectionDate);
+      const newMonth = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (newMonth !== donation.collectionMonth) {
+        const existingDonation = await Donation.findOne({
+          donor: donation.donor,
+          collectionMonth: newMonth
+        });
+        
+        if (existingDonation) {
+          return res.status(400).json({
+            success: false,
+            message: 'Donation record already exists for the new month'
+          });
+        }
+      }
+    }
+
     await donation.save();
     await donation.populate([
       { path: 'donor', select: 'name hundiNo' },

@@ -1,5 +1,7 @@
 const { validationResult } = require('express-validator');
 const Donor = require('../models/donor.model');
+const { initializeDefaultGroups } = require('./group.controller');
+const Group = require('../models/group.model');
 
 // Create a new donor
 exports.createDonor = async (req, res) => {
@@ -19,7 +21,8 @@ exports.createDonor = async (req, res) => {
       mobileNumber,
       address,
       googleMapLink,
-      date
+      date,
+      group
     } = req.body;
 
     // Check if hundi number already exists
@@ -31,6 +34,25 @@ exports.createDonor = async (req, res) => {
       });
     }
 
+    // Initialize default groups if none exist
+    const groupCount = await Group.countDocuments();
+    if (groupCount === 0) {
+      await initializeDefaultGroups(req.user.id);
+    }
+
+    // If no group specified, assign to Group A
+    let groupId = group;
+    if (!groupId) {
+      const defaultGroup = await Group.findOne({ name: 'Group A' });
+      if (!defaultGroup) {
+        return res.status(500).json({
+          success: false,
+          message: 'Default group not found'
+        });
+      }
+      groupId = defaultGroup._id;
+    }
+
     // Create new donor
     const donor = await Donor.create({
       hundiNo,
@@ -39,8 +61,14 @@ exports.createDonor = async (req, res) => {
       address,
       googleMapLink,
       date: date || new Date(),
+      group: groupId,
       createdBy: req.user.id
     });
+
+    await donor.populate([
+      { path: 'createdBy', select: 'name email' },
+      { path: 'group', select: 'name description' }
+    ]);
 
     res.status(201).json({
       success: true,
@@ -79,6 +107,9 @@ exports.getDonors = async (req, res) => {
         $lte: new Date(req.query.endDate)
       };
     }
+    if (req.query.group) {
+      filter.group = req.query.group;
+    }
 
     // Get total count for pagination
     const total = await Donor.countDocuments(filter);
@@ -88,7 +119,10 @@ exports.getDonors = async (req, res) => {
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('createdBy', 'name email');
+      .populate([
+        { path: 'createdBy', select: 'name email' },
+        { path: 'group', select: 'name description' }
+      ]);
 
     res.json({
       success: true,
@@ -115,7 +149,10 @@ exports.getDonors = async (req, res) => {
 exports.getDonorById = async (req, res) => {
   try {
     const donor = await Donor.findById(req.params.id)
-      .populate('createdBy', 'name email');
+      .populate([
+        { path: 'createdBy', select: 'name email' },
+        { path: 'group', select: 'name description' }
+      ]);
 
     if (!donor) {
       return res.status(404).json({
@@ -141,7 +178,6 @@ exports.getDonorById = async (req, res) => {
 // Update donor
 exports.updateDonor = async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -151,7 +187,7 @@ exports.updateDonor = async (req, res) => {
     }
 
     const donor = await Donor.findById(req.params.id);
-
+    
     if (!donor) {
       return res.status(404).json({
         success: false,
@@ -178,12 +214,26 @@ exports.updateDonor = async (req, res) => {
       }
     }
 
+    // If group is being changed, verify it exists
+    if (req.body.group) {
+      const groupExists = await Group.findById(req.body.group);
+      if (!groupExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid group specified'
+        });
+      }
+    }
+
     // Update donor
     const updatedDonor = await Donor.findByIdAndUpdate(
       req.params.id,
       { $set: req.body },
       { new: true, runValidators: true }
-    ).populate('createdBy', 'name email');
+    ).populate([
+      { path: 'createdBy', select: 'name email' },
+      { path: 'group', select: 'name description' }
+    ]);
 
     res.json({
       success: true,

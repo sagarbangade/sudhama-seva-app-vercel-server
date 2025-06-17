@@ -15,6 +15,10 @@ const donationSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'Collection date is required']
   },
+  collectionTime: {
+    type: String,  // Format: "HH:mm"
+    required: [true, 'Collection time is required']
+  },
   collectionMonth: {
     type: String,  // Format: "YYYY-MM"
     required: true,
@@ -33,7 +37,16 @@ const donationSchema = new mongoose.Schema({
   },
   notes: {
     type: String,
-    trim: true
+    trim: true,
+    required: function() {
+      return this.status === 'skipped';  // Notes required when status is skipped
+    },
+    validate: {
+      validator: function(v) {
+        return this.status !== 'skipped' || (v && v.trim().length > 0);
+      },
+      message: 'Notes are required when status is skipped'
+    }
   }
 }, {
   timestamps: true

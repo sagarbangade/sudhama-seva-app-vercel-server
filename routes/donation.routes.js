@@ -16,18 +16,40 @@ const router = express.Router();
 const donationValidation = [
   body('donorId')
     .notEmpty()
-    .withMessage('Donor ID is required'),
+    .withMessage('Donor ID is required')
+    .isMongoId()
+    .withMessage('Invalid donor ID'),
   body('amount')
+    .notEmpty()
+    .withMessage('Amount is required')
     .isNumeric()
     .withMessage('Amount must be a number')
-    .custom(value => value >= 0)
-    .withMessage('Amount cannot be negative'),
+    .custom(value => {
+      if (value < 0) throw new Error('Amount cannot be negative');
+      return true;
+    }),
   body('collectionDate')
+    .notEmpty()
+    .withMessage('Collection date is required')
     .isISO8601()
     .withMessage('Invalid date format'),
+  body('collectionTime')
+    .notEmpty()
+    .withMessage('Collection time is required')
+    .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Invalid time format (HH:mm)'),
   body('status')
     .isIn(['pending', 'collected', 'skipped'])
-    .withMessage('Invalid status'),
+    .withMessage('Invalid status')
+    .custom((value, { req }) => {
+      if (value === 'skipped' && !req.body.notes) {
+        throw new Error('Notes are required when skipping collection');
+      }
+      if (value === 'collected' && (!req.body.amount || req.body.amount <= 0)) {
+        throw new Error('Valid amount is required for collected status');
+      }
+      return true;
+    }),
   body('notes')
     .optional()
     .trim()

@@ -28,6 +28,11 @@ const donorSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  group: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
+    required: [true, 'Group is required']
+  },
   date: {
     type: Date,
     default: Date.now
@@ -49,6 +54,7 @@ const donorSchema = new mongoose.Schema({
 donorSchema.index({ hundiNo: 1 }, { unique: true });
 donorSchema.index({ date: -1 }); // For sorting by date
 donorSchema.index({ createdBy: 1 }); // For filtering by creator
+donorSchema.index({ group: 1 }); // For filtering by group
 
 const Donor = mongoose.model('Donor', donorSchema);
 

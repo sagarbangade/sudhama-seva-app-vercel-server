@@ -30,11 +30,12 @@ async function initializeMonthlyDonations() {
         if (!existingDonation) {
           await Donation.create({
             donor: donor._id,
-            amount: 0, // Will be updated when collected
+            amount: 0,
             collectionDate: new Date(),
+            collectionTime: '09:00', // Default collection time
             collectionMonth: currentMonth,
             status: 'pending',
-            collectedBy: donor.createdBy, // Default to donor's creator
+            collectedBy: donor.createdBy,
             notes: 'Automatically initialized for monthly collection'
           });
           initialized++;
@@ -56,12 +57,19 @@ async function initializeMonthlyDonations() {
   }
 }
 
+const notifyError = async (error) => {
+  console.error('Cron job error:', error);
+  // Add your notification logic here (email, SMS, etc.)
+};
+
 // Schedule the cron job to run at 00:01 on the first day of each month
 const scheduleDonationInitialization = () => {
-  // Run at 1 minute past midnight on the first day of every month
-  cron.schedule('1 0 1 * *', () => {
-    console.log('Running scheduled monthly donation initialization...');
-    initializeMonthlyDonations();
+  cron.schedule('1 0 1 * *', async () => {
+    try {
+      await initializeMonthlyDonations();
+    } catch (error) {
+      await notifyError(error);
+    }
   });
 };
 

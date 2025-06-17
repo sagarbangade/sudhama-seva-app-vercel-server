@@ -9,33 +9,47 @@ const auth = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'No authentication token, access denied'
+        message: 'Authentication token is required'
       });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Find user
-    const user = await User.findById(decoded.id).select('-password');
-    
-    if (!user) {
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // Add token expiry check
+      if (decoded.exp < Date.now() / 1000) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token has expired'
+        });
+      }
+
+      // Find user
+      const user = await User.findById(decoded.id).select('-password');
+      
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      if (!user.isActive) {
+        return res.status(401).json({
+          success: false,
+          message: 'User account is deactivated'
+        });
+      }
+
+      // Add user to request object
+      req.user = user;
+      next();
+    } catch (error) {
       return res.status(401).json({
         success: false,
-        message: 'User not found'
+        message: error.name === 'TokenExpiredError' ? 'Token has expired' : 'Invalid token'
       });
     }
-
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'User account is deactivated'
-      });
-    }
-
-    // Add user to request object
-    req.user = user;
-    next();
   } catch (error) {
     res.status(401).json({
       success: false,
