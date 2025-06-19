@@ -1,79 +1,52 @@
 const cron = require('node-cron');
 const Donor = require('../models/donor.model');
-const Donation = require('../models/donation.model');
 
-// Function to initialize monthly donations
-async function initializeMonthlyDonations() {
+// Function to update donor status to pending before next collection date
+async function updateDonorStatus() {
   try {
-    console.log('Starting monthly donation initialization...');
-    
-    // Get current month in YYYY-MM format
     const date = new Date();
-    const currentMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    
-    // Get all active donors
-    const donors = await Donor.find({ isActive: true });
-    console.log(`Found ${donors.length} active donors`);
-    
-    let initialized = 0;
-    let skipped = 0;
-    
-    // Initialize donations for each donor
-    for (const donor of donors) {
-      try {
-        // Check if donation already exists for this month
-        const existingDonation = await Donation.findOne({
-          donor: donor._id,
-          collectionMonth: currentMonth
-        });
-        
-        if (!existingDonation) {
-          await Donation.create({
-            donor: donor._id,
-            amount: 0,
-            collectionDate: new Date(),
-            collectionTime: '09:00', // Default collection time
-            collectionMonth: currentMonth,
-            status: 'pending',
-            collectedBy: donor.createdBy,
-            notes: 'Automatically initialized for monthly collection'
-          });
-          initialized++;
-        } else {
-          skipped++;
-        }
-      } catch (error) {
-        console.error(`Error processing donor ${donor._id}:`, error);
-      }
-    }
-    
-    console.log(`Monthly donations initialized for ${currentMonth}:`, {
-      initialized,
-      skipped,
-      total: donors.length
+    date.setDate(date.getDate() + 7); // Get date 7 days from now
+
+    // Find donors whose next collection date is within 7 days
+    const donors = await Donor.find({
+      lastCollectionDate: { 
+        $lte: date,
+        $ne: null 
+      },
+      isActive: true,
+      status: { $ne: 'pending' }
     });
+
+    for (const donor of donors) {
+      // Add to status history
+      donor.statusHistory.push({
+        status: 'pending',
+        date: new Date(),
+        notes: 'Automatically set to pending for next collection'
+      });
+      
+      donor.status = 'pending';
+      await donor.save();
+    }
+
+    console.log(`Updated ${donors.length} donors to pending status`);
   } catch (error) {
-    console.error('Error initializing monthly donations:', error);
+    console.error('Error updating donor status:', error);
   }
 }
 
-const notifyError = async (error) => {
-  console.error('Cron job error:', error);
-  // Add your notification logic here (email, SMS, etc.)
-};
-
-// Schedule the cron job to run at 00:01 on the first day of each month
-const scheduleDonationInitialization = () => {
-  cron.schedule('1 0 1 * *', async () => {
+// Schedule the cron job to run daily at midnight
+const scheduleStatusUpdates = () => {
+  cron.schedule('0 0 * * *', async () => {
     try {
-      await initializeMonthlyDonations();
+      await updateDonorStatus();
     } catch (error) {
-      await notifyError(error);
+      console.error('Cron job error:', error);
     }
   });
 };
 
 module.exports = {
-  scheduleDonationInitialization,
-  initializeMonthlyDonations // Export for manual triggering if needed
+  scheduleStatusUpdates,
+  updateDonorStatus // Export for testing purposes
 };

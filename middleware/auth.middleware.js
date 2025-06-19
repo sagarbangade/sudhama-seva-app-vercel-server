@@ -3,7 +3,6 @@ const User = require('../models/user.model');
 
 const auth = async (req, res, next) => {
   try {
-    // Get token from header
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
@@ -14,18 +13,19 @@ const auth = async (req, res, next) => {
     }
 
     try {
-      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      // Fix token expiry check
-      if (Math.floor(Date.now() / 1000) > decoded.exp) {
+      // Check if token has expired
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      if (currentTimestamp > decoded.exp) {
         return res.status(401).json({
           success: false,
-          message: 'Token has expired'
+          message: 'Token has expired',
+          code: 'TOKEN_EXPIRED'
         });
       }
 
-      // Find user
+      // Find user and ensure they exist and are active
       const user = await User.findById(decoded.id).select('-password');
       
       if (!user) {
@@ -42,31 +42,73 @@ const auth = async (req, res, next) => {
         });
       }
 
-      // Add user to request object
+      // Check if token is about to expire (within 1 hour)
+      const oneHourFromNow = currentTimestamp + (60 * 60);
+      if (decoded.exp < oneHourFromNow) {
+        // Generate new token
+        const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+          expiresIn: process.env.JWT_EXPIRES_IN || '30d'
+        });
+        
+        // Add new token to response headers
+        res.setHeader('X-New-Token', newToken);
+      }
+
       req.user = user;
       next();
     } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: error.name === 'TokenExpiredError' ? 'Token has expired' : 'Invalid token'
-      });
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Token has expired',
+          code: 'TOKEN_EXPIRED'
+        });
+      }
+      
+      if (error.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token',
+          code: 'INVALID_TOKEN'
+        });
+      }
+
+      throw error;
     }
   } catch (error) {
-    res.status(401).json({
+    console.error('Auth middleware error:', error);
+    res.status(500).json({
       success: false,
-      message: 'Token is invalid or expired'
+      message: 'Authentication error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-// Middleware to check if user is admin
+// Admin middleware with proper error handling
 const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+
     next();
-  } else {
-    res.status(403).json({
+  } catch (error) {
+    console.error('Admin middleware error:', error);
+    res.status(500).json({
       success: false,
-      message: 'Access denied. Admin privileges required.'
+      message: 'Authorization error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

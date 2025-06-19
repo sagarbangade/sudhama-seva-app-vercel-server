@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const Donor = require('../models/donor.model');
 const { initializeDefaultGroups } = require('./group.controller');
 const Group = require('../models/group.model');
+const Donation = require('../models/donation.model');
 
 // Create a new donor
 exports.createDonor = async (req, res) => {
@@ -175,6 +176,19 @@ exports.getDonorById = async (req, res) => {
   }
 };
 
+// Add status validation helper
+const isValidStatusTransition = (currentStatus, newStatus) => {
+  if (currentStatus === newStatus) return true;
+  
+  const validTransitions = {
+    pending: ['collected', 'skipped'],
+    collected: ['pending'],
+    skipped: ['pending']
+  };
+
+  return validTransitions[currentStatus]?.includes(newStatus) || false;
+};
+
 // Update donor
 exports.updateDonor = async (req, res) => {
   try {
@@ -225,26 +239,90 @@ exports.updateDonor = async (req, res) => {
       }
     }
 
-    // Update donor
-    const updatedDonor = await Donor.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true, runValidators: true }
-    ).populate([
-      { path: 'createdBy', select: 'name email' },
-      { path: 'group', select: 'name description' }
+    // Handle status changes
+    if (req.body.status) {
+      if (!isValidStatusTransition(donor.status, req.body.status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition from ${donor.status} to ${req.body.status}`
+        });
+      }
+
+      // Add to status history
+      donor.statusHistory.push({
+        status: req.body.status,
+        date: new Date(),
+        notes: req.body.notes || `Status changed to ${req.body.status}`
+      });
+    }
+
+    // Update fields
+    const updates = ['name', 'mobileNumber', 'address', 'googleMapLink', 'group', 'status', 'isActive'];
+    updates.forEach(update => {
+      if (req.body[update] !== undefined) {
+        donor[update] = req.body[update];
+      }
+    });
+
+    await donor.save();
+    
+    await donor.populate([
+      { path: 'group', select: 'name' },
+      { path: 'createdBy', select: 'name email' }
     ]);
 
     res.json({
       success: true,
-      message: 'Donor updated successfully',
-      data: { donor: updatedDonor }
+      data: { donor }
     });
   } catch (error) {
     console.error('Update donor error:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating donor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+exports.getDonorStatus = async (req, res) => {
+  try {
+    const donor = await Donor.findById(req.params.id)
+      .populate('group', 'name area')
+      .select('name hundiNo status lastCollectionDate statusHistory')
+      .lean();
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donor not found'
+      });
+    }
+
+    // Get last 5 donations
+    const recentDonations = await Donation.find({ donor: donor._id })
+      .sort('-collectionDate')
+      .limit(5)
+      .lean();
+
+    const nextCollectionDate = donor.lastCollectionDate ? 
+      new Date(donor.lastCollectionDate.getTime() + (30 * 24 * 60 * 60 * 1000)) : 
+      null;
+
+    res.json({
+      success: true,
+      data: {
+        donor,
+        nextCollectionDate,
+        recentDonations,
+        lastStatus: donor.statusHistory[donor.statusHistory.length - 1] || null
+      }
+    });
+  } catch (error) {
+    console.error('Get donor status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching donor status',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

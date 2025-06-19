@@ -7,14 +7,18 @@ const groupSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  area: {
+    type: String,
+    required: [true, 'Area description is required'],
+    trim: true
+  },
   description: {
     type: String,
     trim: true
   },
-  area: {
-    type: String,
-    required: [true, 'Area is required'],
-    trim: true
+  isActive: {
+    type: Boolean,
+    default: true
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -27,7 +31,6 @@ const groupSchema = new mongoose.Schema({
 
 // Create indexes
 groupSchema.index({ name: 1 }, { unique: true });
-groupSchema.index({ createdBy: 1 });
 groupSchema.index({ area: 1 });
 
 const Group = mongoose.model('Group', groupSchema);

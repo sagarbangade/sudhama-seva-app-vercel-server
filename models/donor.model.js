@@ -33,10 +33,23 @@ const donorSchema = new mongoose.Schema({
     ref: 'Group',
     required: [true, 'Group is required']
   },
-  date: {
-    type: Date,
-    default: Date.now
+  status: {
+    type: String,
+    enum: ['pending', 'collected', 'skipped'],
+    default: 'pending'
   },
+  lastCollectionDate: {
+    type: Date,
+    default: null
+  },
+  statusHistory: [{
+    status: {
+      type: String,
+      enum: ['pending', 'collected', 'skipped']
+    },
+    date: Date,
+    notes: String
+  }],
   isActive: {
     type: Boolean,
     default: true
@@ -52,9 +65,10 @@ const donorSchema = new mongoose.Schema({
 
 // Create indexes for efficient queries
 donorSchema.index({ hundiNo: 1 }, { unique: true });
-donorSchema.index({ date: -1 }); // For sorting by date
-donorSchema.index({ createdBy: 1 }); // For filtering by creator
-donorSchema.index({ group: 1 }); // For filtering by group
+donorSchema.index({ group: 1 });
+donorSchema.index({ status: 1 });
+donorSchema.index({ lastCollectionDate: 1 });
+donorSchema.index({ createdBy: 1 });
 
 const Donor = mongoose.model('Donor', donorSchema);
 

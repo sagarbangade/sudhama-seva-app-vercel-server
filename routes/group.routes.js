@@ -1,13 +1,12 @@
 const express = require('express');
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const { auth } = require('../middleware/auth.middleware');
 const {
   createGroup,
   getGroups,
   getGroupById,
   updateGroup,
-  deleteGroup,
-  assignDonorsToGroup
+  deleteGroup
 } = require('../controllers/group.controller');
 
 /**
@@ -210,33 +209,32 @@ const router = express.Router();
 // Validation middleware
 const groupValidation = [
   body('name')
-    .trim()
     .notEmpty()
-    .withMessage('Group name is required'),
+    .withMessage('Group name is required')
+    .trim(),
   body('area')
-    .trim()
     .notEmpty()
-    .withMessage('Area is required'),
+    .withMessage('Area description is required')
+    .trim(),
   body('description')
     .optional()
     .trim()
 ];
 
-// Add validation for donor assignment
-const assignDonorsValidation = [
-  body('donorIds')
-    .isArray()
-    .withMessage('Donor IDs must be an array')
-    .notEmpty()
-    .withMessage('At least one donor ID is required')
-];
-
 // Routes
 router.post('/', auth, groupValidation, createGroup);
-router.get('/', auth, getGroups);
+
+router.get('/', auth, [
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('search').optional().trim(),
+  query('sort').optional().trim()
+], getGroups);
+
 router.get('/:id', auth, getGroupById);
-router.put('/:id', auth, groupValidation, updateGroup);
+
+router.put('/:id', auth, groupValidation.map(validation => validation.optional()), updateGroup);
+
 router.delete('/:id', auth, deleteGroup);
-router.post('/:id/assign', auth, assignDonorsValidation, assignDonorsToGroup);
 
 module.exports = router;

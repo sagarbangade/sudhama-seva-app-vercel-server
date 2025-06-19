@@ -8,57 +8,43 @@ const donationSchema = new mongoose.Schema({
   },
   amount: {
     type: Number,
-    required: [true, 'Amount is required'],
-    min: [0, 'Amount cannot be negative']
+    required: true,
+    min: 0
   },
   collectionDate: {
     type: Date,
-    required: [true, 'Collection date is required']
+    required: true
   },
   collectionTime: {
-    type: String,  // Format: "HH:mm"
-    required: [true, 'Collection time is required']
-  },
-  collectionMonth: {
-    type: String,  // Format: "YYYY-MM"
-    required: true,
-    index: true
-  },
-  status: {
     type: String,
-    enum: ['pending', 'collected', 'skipped'],
-    default: 'pending',
-    required: true
+    required: true,
+    match: [/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter valid time in HH:mm format']
+  },
+  notes: {
+    type: String,
+    trim: true
   },
   collectedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },
-  notes: {
-    type: String,
-    trim: true,
-    required: function() {
-      return this.status === 'skipped';  // Notes required when status is skipped
-    },
-    validate: {
-      validator: function(v) {
-        return this.status !== 'skipped' || (v && v.trim().length > 0);
-      },
-      message: 'Notes are required when status is skipped'
-    }
   }
 }, {
   timestamps: true
 });
 
-// Create compound index to ensure one donation per donor per month
-donationSchema.index({ donor: 1, collectionMonth: 1 }, { unique: true });
-
-// Create indexes for efficient querying
-donationSchema.index({ status: 1 });
+// Indexes for common queries
+donationSchema.index({ donor: 1, collectionDate: 1 });
 donationSchema.index({ collectionDate: 1 });
 donationSchema.index({ collectedBy: 1 });
+
+// Prevent future dates
+donationSchema.pre('save', function(next) {
+  if (this.collectionDate > new Date()) {
+    next(new Error('Collection date cannot be in the future'));
+  }
+  next();
+});
 
 const Donation = mongoose.model('Donation', donationSchema);
 

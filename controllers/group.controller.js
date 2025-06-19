@@ -3,27 +3,6 @@ const Group = require('../models/group.model');
 const Donor = require('../models/donor.model');
 const mongoose = require('mongoose');
 
-// Create initial groups
-exports.initializeDefaultGroups = async (userId) => {
-  const defaultGroups = ['Group A', 'Group B', 'Group C'];
-  
-  try {
-    for (const groupName of defaultGroups) {
-      const existingGroup = await Group.findOne({ name: groupName });
-      if (!existingGroup) {
-        await Group.create({
-          name: groupName,
-          description: `Default ${groupName}`,
-          createdBy: userId
-        });
-      }
-    }
-    console.log('Default groups initialized successfully');
-  } catch (error) {
-    console.error('Error initializing default groups:', error);
-  }
-};
-
 // Create a new group
 exports.createGroup = async (req, res) => {
   try {
@@ -35,7 +14,7 @@ exports.createGroup = async (req, res) => {
       });
     }
 
-    const { name, description, area } = req.body; // Add area
+    const { name, area, description } = req.body;
 
     // Check if group already exists
     const existingGroup = await Group.findOne({ name });
@@ -48,8 +27,8 @@ exports.createGroup = async (req, res) => {
 
     const group = await Group.create({
       name,
+      area,
       description,
-      area, // Add this
       createdBy: req.user.id
     });
 
@@ -80,12 +59,8 @@ exports.getGroups = async (req, res) => {
     if (req.query.search) {
       filter.$or = [
         { name: { $regex: req.query.search, $options: 'i' } },
-        { area: { $regex: req.query.search, $options: 'i' } },
-        { description: { $regex: req.query.search, $options: 'i' } }
+        { area: { $regex: req.query.search, $options: 'i' } }
       ];
-    }
-    if (req.query.isActive !== undefined) {
-      filter.isActive = req.query.isActive === 'true';
     }
 
     // Get total count for pagination
@@ -142,12 +117,11 @@ exports.getGroupById = async (req, res) => {
     if (req.query.search) {
       donorFilter.$or = [
         { name: { $regex: req.query.search, $options: 'i' } },
-        { hundiNo: { $regex: req.query.search, $options: 'i' } },
-        { mobileNumber: { $regex: req.query.search, $options: 'i' } }
+        { hundiNo: { $regex: req.query.search, $options: 'i' } }
       ];
     }
-    if (req.query.isActive !== undefined) {
-      donorFilter.isActive = req.query.isActive === 'true';
+    if (req.query.status) {
+      donorFilter.status = req.query.status;
     }
 
     // Get total donors count for pagination
@@ -155,27 +129,16 @@ exports.getGroupById = async (req, res) => {
 
     // Get donors with pagination and sorting
     const donors = await Donor.find(donorFilter)
-      .populate('createdBy', 'name email')
+      .select('name hundiNo status lastCollectionDate')
       .sort(sort)
       .skip(skip)
       .limit(limit);
-
-    // Get total active and inactive donors count
-    const [activeDonors, inactiveDonors] = await Promise.all([
-      Donor.countDocuments({ ...donorFilter, isActive: true }),
-      Donor.countDocuments({ ...donorFilter, isActive: false })
-    ]);
 
     res.json({
       success: true,
       data: { 
         group,
         donors,
-        stats: {
-          totalDonors,
-          activeDonors,
-          inactiveDonors
-        },
         pagination: {
           total: totalDonors,
           page,
@@ -278,73 +241,5 @@ exports.deleteGroup = async (req, res) => {
       message: 'Error deleting group',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
-  }
-};
-
-// Assign donors to group
-exports.assignDonorsToGroup = async (req, res) => {
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
-    
-    const { donorIds } = req.body;
-    const groupId = req.params.id;
-
-    // Validate group exists
-    const group = await Group.findById(groupId);
-    if (!group) {
-      return res.status(404).json({
-        success: false,
-        message: 'Group not found'
-      });
-    }
-
-    // Validate donors exist and are active
-    const donors = await Donor.find({
-      _id: { $in: donorIds }
-    });
-
-    if (donors.length !== donorIds.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'One or more donors not found'
-      });
-    }
-
-    const inactiveDonors = donors.filter(donor => !donor.isActive);
-    if (inactiveDonors.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot assign inactive donors to group',
-        inactiveDonors: inactiveDonors.map(d => ({
-          id: d._id,
-          name: d.name,
-          hundiNo: d.hundiNo
-        }))
-      });
-    }
-
-    // Update all donors within transaction
-    await Donor.updateMany(
-      { _id: { $in: donorIds } },
-      { $set: { group: groupId } },
-      { session }
-    );
-
-    await session.commitTransaction();
-    res.json({
-      success: true,
-      message: 'Donors assigned to group successfully'
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    console.error('Assign donors error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error assigning donors to group',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  } finally {
-    session.endSession();
   }
 };

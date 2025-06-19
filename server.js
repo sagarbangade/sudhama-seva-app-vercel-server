@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
-const { scheduleDonationInitialization } = require('./utils/cronJobs');
+const { scheduleStatusUpdates } = require('./utils/cronJobs');
 const connectDB = require('./config/database');
 require('dotenv').config();
 
@@ -50,8 +50,8 @@ app.get('/swagger.json', (req, res) => {
 // Connect to MongoDB
 connectDB();
 
-// Initialize cron jobs
-scheduleDonationInitialization();
+// Initialize cron job for donor status updates
+scheduleStatusUpdates();
 
 // Handle MongoDB connection events
 mongoose.connection.on('error', (err) => {
