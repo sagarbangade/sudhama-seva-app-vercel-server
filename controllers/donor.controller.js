@@ -4,6 +4,26 @@ const { initializeDefaultGroups } = require('./group.controller');
 const Group = require('../models/group.model');
 const Donation = require('../models/donation.model');
 
+// Helper function to check if donor has donation for current month
+const hasDonationForCurrentMonth = async (donorId) => {
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  const startOfMonth = new Date(currentYear, currentMonth, 1);
+  const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
+
+  const existingDonation = await Donation.findOne({
+    donor: donorId,
+    collectionDate: {
+      $gte: startOfMonth,
+      $lte: endOfMonth
+    }
+  });
+
+  return !!existingDonation;
+};
+
 // Create a new donor
 exports.createDonor = async (req, res) => {
   try {
@@ -218,14 +238,6 @@ exports.updateDonor = async (req, res) => {
       });
     }
 
-    // Check if user is authorized to update
-    if (donor.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this donor'
-      });
-    }
-
     // Check if hundi number is being changed and if it already exists
     if (req.body.hundiNo && req.body.hundiNo !== donor.hundiNo) {
       const existingDonor = await Donor.findOne({ hundiNo: req.body.hundiNo });
@@ -349,14 +361,6 @@ exports.deleteDonor = async (req, res) => {
       });
     }
 
-    // Check if user is authorized to delete
-    if (donor.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this donor'
-      });
-    }
-
     await donor.deleteOne();
 
     res.json({
@@ -368,6 +372,27 @@ exports.deleteDonor = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting donor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Manual trigger for donor status updates (for testing)
+exports.triggerStatusUpdate = async (req, res) => {
+  try {
+    const { updateDonorStatus } = require('../utils/cronJobs');
+    const result = await updateDonorStatus();
+    
+    res.json({
+      success: true,
+      message: 'Donor status update completed',
+      data: result
+    });
+  } catch (error) {
+    console.error('Manual status update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating donor status',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

@@ -38,8 +38,9 @@ exports.createDonation = async (req, res) => {
       collectedBy: req.user.id
     }], { session });
 
-    // Update donor status and collectionDate
-    donor.collectionDate = collectionDate;
+    // Update donor status and set next collection date to one month after current collection
+    donor.collectionDate = new Date(collectionDate);
+    donor.collectionDate.setMonth(donor.collectionDate.getMonth() + 1);
     donor.status = 'collected';
     donor.statusHistory.push({
       status: 'collected',
@@ -52,7 +53,7 @@ exports.createDonation = async (req, res) => {
 
     const populatedDonation = await Donation.findById(donation[0]._id)
       .populate([
-        { path: 'donor', select: 'name hundiNo status' },
+        { path: 'donor', select: 'name hundiNo status collectionDate' },
         { path: 'collectedBy', select: 'name email' }
       ]);
 
@@ -156,9 +157,10 @@ exports.skipDonation = async (req, res) => {
       });
     }
 
-    // Update donor status to skipped
+    // Update donor status to skipped and set next collection date to one month from now
     donor.status = 'skipped';
     donor.collectionDate = new Date();
+    donor.collectionDate.setMonth(donor.collectionDate.getMonth() + 1);
     donor.statusHistory.push({
       status: 'skipped',
       date: new Date(),

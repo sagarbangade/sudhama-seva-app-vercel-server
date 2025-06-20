@@ -8,7 +8,8 @@ const {
   updateDonor,
   deleteDonor,
   getDonorStatus,
-  updateDonorStatus
+  updateDonorStatus,
+  triggerStatusUpdate
 } = require('../controllers/donor.controller');
 
 /**
@@ -273,6 +274,9 @@ router.get('/', auth, [
 router.get('/:id', auth, getDonorById);
 router.get('/:id/status', auth, getDonorStatus);
 router.put('/:id/status', auth, statusValidation, updateDonorStatus);
+
+// Manual trigger for status updates (for testing)
+router.post('/trigger-status-update', auth, triggerStatusUpdate);
 
 router.put('/:id', auth, [
   ...donorValidation.map(validation => validation.optional()),
