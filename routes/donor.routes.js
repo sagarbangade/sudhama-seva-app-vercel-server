@@ -157,6 +157,7 @@ const router = express.Router();
  *         - name
  *         - mobileNumber
  *         - address
+ *         - googleMapLink
  *
  *     UpdateDonorRequest:
  *       type: object
@@ -293,6 +294,23 @@ const router = express.Router();
  *                 address: "123 Bhakti Marg, Mayapur, West Bengal 741313"
  *                 googleMapLink: "https://goo.gl/maps/example"
  *                 group: "507f1f77bcf86cd799439012"
+ *             validation_error:
+ *               summary: Validation error
+ *               value:
+ *                 success: false
+ *                 message: "Validation error"
+ *                 errors:
+ *                   - field: "mobileNumber"
+ *                     message: "Please enter a valid 10-digit mobile number"
+ *                   - field: "name"
+ *                     message: "Name must be at least 2 characters long"
+ *                   - field: "googleMapLink"
+ *                     message: "Google Map link is required"
+ *             hundi_exists:
+ *               summary: Hundi number already exists
+ *               value:
+ *                 success: false
+ *                 message: "A donor with this hundi number already exists"
  *     responses:
  *       201:
  *         description: Donor created successfully
@@ -353,6 +371,8 @@ const router = express.Router();
  *                       message: "Please enter a valid 10-digit mobile number"
  *                     - field: "name"
  *                       message: "Name must be at least 2 characters long"
+ *                     - field: "googleMapLink"
+ *                       message: "Google Map link is required"
  *               hundi_exists:
  *                 summary: Hundi number already exists
  *                 value:
@@ -892,8 +912,44 @@ const donorValidation = [
     .matches(/^[0-9]{10}$/)
     .withMessage("Please enter a valid 10-digit mobile number"),
   body("address").notEmpty().withMessage("Address is required").trim(),
-  body("googleMapLink").optional().trim(),
+  body("googleMapLink")
+    .notEmpty()
+    .withMessage("Google Map link is required")
+    .trim(),
   body("group").optional().isMongoId().withMessage("Invalid group ID"),
+];
+
+// Update validation - makes googleMapLink required, others optional
+const donorUpdateValidation = [
+  body("hundiNo")
+    .optional()
+    .notEmpty()
+    .withMessage("Hundi number cannot be empty")
+    .trim(),
+  body("name")
+    .optional()
+    .notEmpty()
+    .withMessage("Name cannot be empty")
+    .trim()
+    .isLength({ min: 2 })
+    .withMessage("Name must be at least 2 characters long"),
+  body("mobileNumber")
+    .optional()
+    .notEmpty()
+    .withMessage("Mobile number cannot be empty")
+    .matches(/^[0-9]{10}$/)
+    .withMessage("Please enter a valid 10-digit mobile number"),
+  body("address")
+    .optional()
+    .notEmpty()
+    .withMessage("Address cannot be empty")
+    .trim(),
+  body("googleMapLink")
+    .notEmpty()
+    .withMessage("Google Map link is required")
+    .trim(),
+  body("group").optional().isMongoId().withMessage("Invalid group ID"),
+  body("isActive").optional().isBoolean(),
 ];
 
 const statusValidation = [
@@ -947,16 +1003,7 @@ router.put(
 // Manual trigger for status updates (for testing)
 router.post("/trigger-status-update", auth, triggerStatusUpdate);
 
-router.put(
-  "/:id",
-  auth,
-  validateObjectId,
-  [
-    ...donorValidation.map((validation) => validation.optional()),
-    body("isActive").optional().isBoolean(),
-  ],
-  updateDonor
-);
+router.put("/:id", auth, validateObjectId, donorUpdateValidation, updateDonor);
 
 router.delete("/:id", auth, validateObjectId, deleteDonor);
 
