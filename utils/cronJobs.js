@@ -9,7 +9,7 @@ async function updateDonorStatus() {
 
     // Find donors whose next collection date is within 7 days
     const donors = await Donor.find({
-      lastCollectionDate: { 
+      collectionDate: { 
         $lte: date,
         $ne: null 
       },

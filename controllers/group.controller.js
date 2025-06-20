@@ -123,13 +123,19 @@ exports.getGroupById = async (req, res) => {
     if (req.query.status) {
       donorFilter.status = req.query.status;
     }
+    if (req.query.startDate && req.query.endDate) {
+      donorFilter.collectionDate = {
+        $gte: new Date(req.query.startDate),
+        $lte: new Date(req.query.endDate)
+      };
+    }
 
     // Get total donors count for pagination
     const totalDonors = await Donor.countDocuments(donorFilter);
 
     // Get donors with pagination and sorting
     const donors = await Donor.find(donorFilter)
-      .select('name hundiNo status lastCollectionDate')
+      .select('name hundiNo collectionDate') // removed status from select
       .sort(sort)
       .skip(skip)
       .limit(limit);

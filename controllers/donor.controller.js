@@ -22,7 +22,7 @@ exports.createDonor = async (req, res) => {
       mobileNumber,
       address,
       googleMapLink,
-      date,
+      collectionDate,
       group
     } = req.body;
 
@@ -54,6 +54,15 @@ exports.createDonor = async (req, res) => {
       groupId = defaultGroup._id;
     }
 
+    // Set collectionDate to one month after creation by default, or use provided value
+    let initialCollectionDate;
+    if (collectionDate) {
+      initialCollectionDate = new Date(collectionDate);
+    } else {
+      const now = new Date();
+      initialCollectionDate = new Date(now.setMonth(now.getMonth() + 1));
+    }
+
     // Create new donor
     const donor = await Donor.create({
       hundiNo,
@@ -61,7 +70,7 @@ exports.createDonor = async (req, res) => {
       mobileNumber,
       address,
       googleMapLink,
-      date: date || new Date(),
+      collectionDate: initialCollectionDate,
       group: groupId,
       createdBy: req.user.id
     });
@@ -103,7 +112,7 @@ exports.getDonors = async (req, res) => {
       ];
     }
     if (req.query.startDate && req.query.endDate) {
-      filter.date = {
+      filter.collectionDate = {
         $gte: new Date(req.query.startDate),
         $lte: new Date(req.query.endDate)
       };
@@ -117,7 +126,7 @@ exports.getDonors = async (req, res) => {
 
     // Get donors with pagination
     const donors = await Donor.find(filter)
-      .sort({ date: -1 })
+      .sort({ collectionDate: -1 })
       .skip(skip)
       .limit(limit)
       .populate([
@@ -289,7 +298,7 @@ exports.getDonorStatus = async (req, res) => {
   try {
     const donor = await Donor.findById(req.params.id)
       .populate('group', 'name area')
-      .select('name hundiNo status lastCollectionDate statusHistory')
+      .select('name hundiNo status collectionDate statusHistory')
       .lean();
 
     if (!donor) {
@@ -305,8 +314,8 @@ exports.getDonorStatus = async (req, res) => {
       .limit(5)
       .lean();
 
-    const nextCollectionDate = donor.lastCollectionDate ? 
-      new Date(donor.lastCollectionDate.getTime() + (30 * 24 * 60 * 60 * 1000)) : 
+    const nextCollectionDate = donor.collectionDate ? 
+      new Date(donor.collectionDate.getTime() + (30 * 24 * 60 * 60 * 1000)) : 
       null;
 
     res.json({

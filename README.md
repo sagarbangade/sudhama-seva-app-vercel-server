@@ -130,7 +130,6 @@ npm start
 - collectionDate (Date)
 - collectionTime (String)
 - collectionMonth (String)
-- status (String, enum: ['pending', 'collected', 'skipped'])
 - collectedBy (ObjectId, ref: 'User')
 - notes (String)
 

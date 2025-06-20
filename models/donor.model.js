@@ -38,7 +38,7 @@ const donorSchema = new mongoose.Schema({
     enum: ['pending', 'collected', 'skipped'],
     default: 'pending'
   },
-  lastCollectionDate: {
+  collectionDate: {
     type: Date,
     default: null
   },
@@ -67,7 +67,7 @@ const donorSchema = new mongoose.Schema({
 donorSchema.index({ hundiNo: 1 }, { unique: true });
 donorSchema.index({ group: 1 });
 donorSchema.index({ status: 1 });
-donorSchema.index({ lastCollectionDate: 1 });
+donorSchema.index({ collectionDate: 1 });
 donorSchema.index({ createdBy: 1 });
 
 const Donor = mongoose.model('Donor', donorSchema);

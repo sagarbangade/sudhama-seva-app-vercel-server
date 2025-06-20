@@ -34,20 +34,14 @@ const {
  *           pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
  *           description: Time of collection (HH:mm)
  *           example: "10:30"
- *         status:
- *           type: string
- *           enum: [pending, collected, skipped]
- *           description: Status of the donation
- *           example: "collected"
  *         notes:
  *           type: string
- *           description: Notes about the donation (required when status is skipped)
+ *           description: Notes about the donation
  *           example: "Donor requested to skip this month"
  *       required:
  *         - donorId
  *         - collectionDate
  *         - collectionTime
- *         - status
  */
 
 /**
@@ -88,11 +82,6 @@ const {
  *         name: year
  *         schema:
  *           type: integer
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [pending, collected, skipped]
  *       - in: query
  *         name: page
  *         schema:

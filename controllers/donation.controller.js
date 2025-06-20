@@ -38,9 +38,9 @@ exports.createDonation = async (req, res) => {
       collectedBy: req.user.id
     }], { session });
 
-    // Update donor status to collected
+    // Update donor status and collectionDate
+    donor.collectionDate = collectionDate;
     donor.status = 'collected';
-    donor.lastCollectionDate = collectionDate;
     donor.statusHistory.push({
       status: 'collected',
       date: collectionDate,
@@ -158,7 +158,7 @@ exports.skipDonation = async (req, res) => {
 
     // Update donor status to skipped
     donor.status = 'skipped';
-    donor.lastCollectionDate = new Date();
+    donor.collectionDate = new Date();
     donor.statusHistory.push({
       status: 'skipped',
       date: new Date(),
