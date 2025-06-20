@@ -12,6 +12,8 @@ const {
   triggerStatusUpdate
 } = require('../controllers/donor.controller');
 
+const router = express.Router();
+
 /**
  * @swagger
  * components:

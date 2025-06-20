@@ -377,6 +377,73 @@ exports.deleteDonor = async (req, res) => {
   }
 };
 
+// Update donor status
+exports.updateDonorStatus = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
+
+    const { status, notes } = req.body;
+    const donor = await Donor.findById(req.params.id);
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Donor not found'
+      });
+    }
+
+    // Validate status transition
+    if (!isValidStatusTransition(donor.status, status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status transition from ${donor.status} to ${status}`
+      });
+    }
+
+    // Add to status history
+    donor.statusHistory.push({
+      status,
+      date: new Date(),
+      notes: notes || `Status changed to ${status}`
+    });
+
+    // Update status
+    donor.status = status;
+
+    // If status is collected, update next collection date
+    if (status === 'collected') {
+      const nextDate = new Date(donor.collectionDate);
+      nextDate.setMonth(nextDate.getMonth() + 1);
+      donor.collectionDate = nextDate;
+    }
+
+    await donor.save();
+
+    await donor.populate([
+      { path: 'group', select: 'name area' },
+      { path: 'createdBy', select: 'name email' }
+    ]);
+
+    res.json({
+      success: true,
+      data: { donor }
+    });
+  } catch (error) {
+    console.error('Update donor status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating donor status',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 // Manual trigger for donor status updates (for testing)
 exports.triggerStatusUpdate = async (req, res) => {
   try {

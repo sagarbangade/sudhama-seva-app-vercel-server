@@ -579,6 +579,8 @@ const {
  *               $ref: '#/components/schemas/Error'
  */
 
+const router = express.Router();
+
 // Validation middleware
 const groupValidation = [
   body('name')
