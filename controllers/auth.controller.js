@@ -1,11 +1,11 @@
-const jwt = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
-const User = require('../models/user.model');
+const jwt = require("jsonwebtoken");
+const { validationResult } = require("express-validator");
+const User = require("../models/user.model");
 
 // Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '30d'
+    expiresIn: process.env.JWT_EXPIRES_IN || "30d",
   });
 };
 
@@ -17,7 +17,8 @@ exports.register = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        errors: errors.array()
+        message: "Validation error",
+        errors: errors.array(),
       });
     }
 
@@ -28,7 +29,7 @@ exports.register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email'
+        message: "User already exists with this email",
       });
     }
 
@@ -36,7 +37,7 @@ exports.register = async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password
+      password,
     });
 
     // Generate token
@@ -44,23 +45,33 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: "User registered successfully",
       data: {
         token,
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
-          role: user.role
-        }
-      }
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+        },
+      },
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error("Registration error:", error);
+
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Error in registration',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error in registration",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -71,12 +82,20 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     // Find user and include password for comparison
-    const user = await User.findOne({ email }).select('+password');
-    
+    const user = await User.findOne({ email }).select("+password");
+
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: "Invalid credentials",
+      });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: "User account is deactivated",
       });
     }
 
@@ -85,7 +104,7 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: "Invalid credentials",
       });
     }
 
@@ -98,23 +117,25 @@ exports.login = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       data: {
         token,
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
-          role: user.role
-        }
-      }
+          isActive: user.isActive,
+          lastLogin: user.lastLogin,
+          createdAt: user.createdAt,
+        },
+      },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error in login',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error in login",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -123,26 +144,44 @@ exports.login = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
     res.json({
       success: true,
+      message: "Profile retrieved successfully",
       data: {
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          isActive: user.isActive,
           lastLogin: user.lastLogin,
-          createdAt: user.createdAt
-        }
-      }
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+      },
     });
   } catch (error) {
-    console.error('Get profile error:', error);
+    console.error("Get profile error:", error);
+
+    // Handle specific MongoDB errors
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Error fetching profile',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error fetching profile",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };

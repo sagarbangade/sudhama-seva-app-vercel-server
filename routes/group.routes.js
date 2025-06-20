@@ -1,13 +1,13 @@
-const express = require('express');
-const { body, query } = require('express-validator');
-const { auth } = require('../middleware/auth.middleware');
+const express = require("express");
+const { body, query } = require("express-validator");
+const { auth } = require("../middleware/auth.middleware");
 const {
   createGroup,
   getGroups,
   getGroupById,
   updateGroup,
-  deleteGroup
-} = require('../controllers/group.controller');
+  deleteGroup,
+} = require("../controllers/group.controller");
 
 /**
  * @swagger
@@ -64,7 +64,7 @@ const {
  *       required:
  *         - name
  *         - area
- * 
+ *
  *     CreateGroupRequest:
  *       type: object
  *       properties:
@@ -85,7 +85,7 @@ const {
  *       required:
  *         - name
  *         - area
- * 
+ *
  *     UpdateGroupRequest:
  *       type: object
  *       properties:
@@ -107,7 +107,7 @@ const {
  *           type: boolean
  *           description: Whether the group is active
  *           example: true
- * 
+ *
  *     GroupWithDonors:
  *       type: object
  *       properties:
@@ -223,7 +223,7 @@ const {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- * 
+ *
  *   get:
  *     summary: Get all groups with pagination and search
  *     description: Retrieve a paginated list of groups with optional search and filtering capabilities
@@ -461,7 +461,7 @@ const {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- * 
+ *
  *   put:
  *     summary: Update group
  *     description: Update group information. All fields are optional - only provided fields will be updated.
@@ -527,7 +527,7 @@ const {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- * 
+ *
  *   delete:
  *     summary: Delete group
  *     description: Permanently delete a group. This will fail if there are any donors assigned to this group.
@@ -583,49 +583,76 @@ const router = express.Router();
 
 // Validation middleware
 const groupValidation = [
-  body('name')
+  body("name")
     .notEmpty()
-    .withMessage('Group name is required')
+    .withMessage("Group name is required")
     .trim()
     .isLength({ min: 2 })
-    .withMessage('Group name must be at least 2 characters long'),
-  body('area')
+    .withMessage("Group name must be at least 2 characters long"),
+  body("area")
     .notEmpty()
-    .withMessage('Area description is required')
+    .withMessage("Area description is required")
     .trim()
     .isLength({ min: 2 })
-    .withMessage('Area description must be at least 2 characters long'),
-  body('description')
-    .optional()
-    .trim()
+    .withMessage("Area description must be at least 2 characters long"),
+  body("description").optional().trim(),
 ];
 
+// Parameter validation middleware
+const validateObjectId = (req, res, next) => {
+  const { id } = req.params;
+  if (!id || !require("mongoose").Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid group ID format",
+    });
+  }
+  next();
+};
+
 // Routes
-router.post('/', auth, groupValidation, createGroup);
+router.post("/", auth, groupValidation, createGroup);
 
-router.get('/', auth, [
-  query('search').optional().trim(),
-  query('isActive').optional().isBoolean(),
-  query('page').optional().isInt({ min: 1 }),
-  query('limit').optional().isInt({ min: 1, max: 100 }),
-  query('sort').optional().trim()
-], getGroups);
+router.get(
+  "/",
+  auth,
+  [
+    query("search").optional().trim(),
+    query("isActive").optional().isBoolean(),
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("sort").optional().trim(),
+  ],
+  getGroups
+);
 
-router.get('/:id', auth, [
-  query('search').optional().trim(),
-  query('status').optional().isIn(['pending', 'collected', 'skipped']),
-  query('startDate').optional().isISO8601(),
-  query('endDate').optional().isISO8601(),
-  query('page').optional().isInt({ min: 1 }),
-  query('limit').optional().isInt({ min: 1, max: 100 }),
-  query('sort').optional().trim()
-], getGroupById);
+router.get(
+  "/:id",
+  auth,
+  validateObjectId,
+  [
+    query("search").optional().trim(),
+    query("status").optional().isIn(["pending", "collected", "skipped"]),
+    query("startDate").optional().isISO8601(),
+    query("endDate").optional().isISO8601(),
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("sort").optional().trim(),
+  ],
+  getGroupById
+);
 
-router.put('/:id', auth, [
-  ...groupValidation.map(validation => validation.optional()),
-  body('isActive').optional().isBoolean()
-], updateGroup);
+router.put(
+  "/:id",
+  auth,
+  validateObjectId,
+  [
+    ...groupValidation.map((validation) => validation.optional()),
+    body("isActive").optional().isBoolean(),
+  ],
+  updateGroup
+);
 
-router.delete('/:id', auth, deleteGroup);
+router.delete("/:id", auth, validateObjectId, deleteGroup);
 
 module.exports = router;

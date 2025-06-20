@@ -1,7 +1,7 @@
-const { validationResult } = require('express-validator');
-const Donation = require('../models/donation.model');
-const Donor = require('../models/donor.model');
-const mongoose = require('mongoose');
+const { validationResult } = require("express-validator");
+const Donation = require("../models/donation.model");
+const Donor = require("../models/donor.model");
+const mongoose = require("mongoose");
 
 // Create a new donation record
 exports.createDonation = async (req, res) => {
@@ -13,7 +13,8 @@ exports.createDonation = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        errors: errors.array()
+        message: "Validation error",
+        errors: errors.array(),
       });
     }
 
@@ -21,53 +22,76 @@ exports.createDonation = async (req, res) => {
 
     // Check if donor exists and is active
     const donor = await Donor.findById(donorId).session(session);
-    if (!donor || !donor.isActive) {
+    if (!donor) {
       return res.status(404).json({
         success: false,
-        message: donor ? 'Cannot create donation for inactive donor' : 'Donor not found'
+        message: "Donor not found",
+      });
+    }
+
+    if (!donor.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot create donation for inactive donor",
       });
     }
 
     // Create donation record
-    const donation = await Donation.create([{
-      donor: donorId,
-      amount,
-      collectionDate,
-      collectionTime,
-      notes,
-      collectedBy: req.user.id
-    }], { session });
+    const donation = await Donation.create(
+      [
+        {
+          donor: donorId,
+          amount,
+          collectionDate,
+          collectionTime,
+          notes,
+          collectedBy: req.user.id,
+        },
+      ],
+      { session }
+    );
 
     // Update donor status and set next collection date to one month after current collection
     donor.collectionDate = new Date(collectionDate);
     donor.collectionDate.setMonth(donor.collectionDate.getMonth() + 1);
-    donor.status = 'collected';
+    donor.status = "collected";
     donor.statusHistory.push({
-      status: 'collected',
+      status: "collected",
       date: collectionDate,
-      notes: notes || 'Collection completed'
+      notes: notes || "Collection completed",
     });
 
     await donor.save({ session });
     await session.commitTransaction();
 
-    const populatedDonation = await Donation.findById(donation[0]._id)
-      .populate([
-        { path: 'donor', select: 'name hundiNo status collectionDate' },
-        { path: 'collectedBy', select: 'name email' }
-      ]);
+    const populatedDonation = await Donation.findById(donation[0]._id).populate(
+      [
+        { path: "donor", select: "name hundiNo status collectionDate" },
+        { path: "collectedBy", select: "name email" },
+      ]
+    );
 
     res.status(201).json({
       success: true,
-      data: { donation: populatedDonation }
+      message: "Donation created successfully",
+      data: { donation: populatedDonation },
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('Create donation error:', error);
+    console.error("Create donation error:", error);
+
+    // Handle specific MongoDB errors
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid donor ID format",
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Error creating donation record',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error creating donation record",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   } finally {
     session.endSession();
@@ -83,19 +107,19 @@ exports.getDonations = async (req, res) => {
       endDate,
       page = 1,
       limit = 10,
-      sort = '-collectionDate'
+      sort = "-collectionDate",
     } = req.query;
 
     const query = {};
-    
+
     if (donorId) {
       query.donor = donorId;
     }
-    
+
     if (startDate && endDate) {
       query.collectionDate = {
         $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $lte: new Date(endDate),
       };
     }
 
@@ -104,13 +128,13 @@ exports.getDonations = async (req, res) => {
     const [donations, total] = await Promise.all([
       Donation.find(query)
         .populate([
-          { path: 'donor', select: 'name hundiNo status' },
-          { path: 'collectedBy', select: 'name email' }
+          { path: "donor", select: "name hundiNo status" },
+          { path: "collectedBy", select: "name email" },
         ])
         .sort(sort)
         .skip(skip)
         .limit(limit),
-      Donation.countDocuments(query)
+      Donation.countDocuments(query),
     ]);
 
     res.json({
@@ -120,16 +144,16 @@ exports.getDonations = async (req, res) => {
         pagination: {
           total,
           page: parseInt(page),
-          pages: Math.ceil(total / limit)
-        }
-      }
+          pages: Math.ceil(total / limit),
+        },
+      },
     });
   } catch (error) {
-    console.error('Get donations error:', error);
+    console.error("Get donations error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching donations',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error fetching donations",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -145,26 +169,33 @@ exports.skipDonation = async (req, res) => {
     if (!notes || !notes.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Notes are required when skipping collection'
+        message: "Notes are required when skipping collection",
       });
     }
 
     const donor = await Donor.findById(donorId).session(session);
-    if (!donor || !donor.isActive) {
+    if (!donor) {
       return res.status(404).json({
         success: false,
-        message: donor ? 'Cannot skip collection for inactive donor' : 'Donor not found'
+        message: "Donor not found",
+      });
+    }
+
+    if (!donor.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot skip collection for inactive donor",
       });
     }
 
     // Update donor status to skipped and set next collection date to one month from now
-    donor.status = 'skipped';
+    donor.status = "skipped";
     donor.collectionDate = new Date();
     donor.collectionDate.setMonth(donor.collectionDate.getMonth() + 1);
     donor.statusHistory.push({
-      status: 'skipped',
+      status: "skipped",
       date: new Date(),
-      notes
+      notes,
     });
 
     await donor.save({ session });
@@ -172,16 +203,25 @@ exports.skipDonation = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Collection skipped successfully',
-      data: { donor }
+      message: "Collection skipped successfully",
+      data: { donor },
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('Skip donation error:', error);
+    console.error("Skip donation error:", error);
+
+    // Handle specific MongoDB errors
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid donor ID format",
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Error skipping collection',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error skipping collection",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   } finally {
     session.endSession();

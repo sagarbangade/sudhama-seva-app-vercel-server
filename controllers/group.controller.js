@@ -1,7 +1,7 @@
-const { validationResult } = require('express-validator');
-const Group = require('../models/group.model');
-const Donor = require('../models/donor.model');
-const mongoose = require('mongoose');
+const { validationResult } = require("express-validator");
+const Group = require("../models/group.model");
+const Donor = require("../models/donor.model");
+const mongoose = require("mongoose");
 
 // Create a new group
 exports.createGroup = async (req, res) => {
@@ -10,7 +10,7 @@ exports.createGroup = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        errors: errors.array()
+        errors: errors.array(),
       });
     }
 
@@ -21,7 +21,7 @@ exports.createGroup = async (req, res) => {
     if (existingGroup) {
       return res.status(400).json({
         success: false,
-        message: 'A group with this name already exists'
+        message: "A group with this name already exists",
       });
     }
 
@@ -29,19 +29,19 @@ exports.createGroup = async (req, res) => {
       name,
       area,
       description,
-      createdBy: req.user.id
+      createdBy: req.user.id,
     });
 
     res.status(201).json({
       success: true,
-      data: { group }
+      data: { group },
     });
   } catch (error) {
-    console.error('Create group error:', error);
+    console.error("Create group error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error creating group',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error creating group",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -52,14 +52,14 @@ exports.getGroups = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const sort = req.query.sort || 'name';
-    
+    const sort = req.query.sort || "name";
+
     // Build filter object
     const filter = {};
     if (req.query.search) {
       filter.$or = [
-        { name: { $regex: req.query.search, $options: 'i' } },
-        { area: { $regex: req.query.search, $options: 'i' } }
+        { name: { $regex: req.query.search, $options: "i" } },
+        { area: { $regex: req.query.search, $options: "i" } },
       ];
     }
 
@@ -68,7 +68,7 @@ exports.getGroups = async (req, res) => {
 
     // Get groups with pagination and sorting
     const groups = await Group.find(filter)
-      .populate('createdBy', 'name email')
+      .populate("createdBy", "name email")
       .sort(sort)
       .skip(skip)
       .limit(limit);
@@ -80,16 +80,16 @@ exports.getGroups = async (req, res) => {
         pagination: {
           total,
           page,
-          pages: Math.ceil(total / limit)
-        }
-      }
+          pages: Math.ceil(total / limit),
+        },
+      },
     });
   } catch (error) {
-    console.error('Get groups error:', error);
+    console.error("Get groups error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching groups',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error fetching groups",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -100,15 +100,17 @@ exports.getGroupById = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const sort = req.query.sort || 'name';
+    const sort = req.query.sort || "name";
 
-    const group = await Group.findById(req.params.id)
-      .populate('createdBy', 'name email');
+    const group = await Group.findById(req.params.id).populate(
+      "createdBy",
+      "name email"
+    );
 
     if (!group) {
       return res.status(404).json({
         success: false,
-        message: 'Group not found'
+        message: "Group not found",
       });
     }
 
@@ -116,8 +118,8 @@ exports.getGroupById = async (req, res) => {
     const donorFilter = { group: req.params.id };
     if (req.query.search) {
       donorFilter.$or = [
-        { name: { $regex: req.query.search, $options: 'i' } },
-        { hundiNo: { $regex: req.query.search, $options: 'i' } }
+        { name: { $regex: req.query.search, $options: "i" } },
+        { hundiNo: { $regex: req.query.search, $options: "i" } },
       ];
     }
     if (req.query.status) {
@@ -126,7 +128,7 @@ exports.getGroupById = async (req, res) => {
     if (req.query.startDate && req.query.endDate) {
       donorFilter.collectionDate = {
         $gte: new Date(req.query.startDate),
-        $lte: new Date(req.query.endDate)
+        $lte: new Date(req.query.endDate),
       };
     }
 
@@ -135,29 +137,38 @@ exports.getGroupById = async (req, res) => {
 
     // Get donors with pagination and sorting
     const donors = await Donor.find(donorFilter)
-      .select('name hundiNo collectionDate') // removed status from select
+      .select("name hundiNo collectionDate") // removed status from select
       .sort(sort)
       .skip(skip)
       .limit(limit);
 
     res.json({
       success: true,
-      data: { 
+      data: {
         group,
         donors,
         pagination: {
           total: totalDonors,
           page,
-          pages: Math.ceil(totalDonors / limit)
-        }
-      }
+          pages: Math.ceil(totalDonors / limit),
+        },
+      },
     });
   } catch (error) {
-    console.error('Get group error:', error);
+    console.error("Get group error:", error);
+
+    // Handle specific MongoDB errors
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid group ID format",
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Error fetching group',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error fetching group",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -169,16 +180,17 @@ exports.updateGroup = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        errors: errors.array()
+        message: "Validation error",
+        errors: errors.array(),
       });
     }
 
     const group = await Group.findById(req.params.id);
-    
+
     if (!group) {
       return res.status(404).json({
         success: false,
-        message: 'Group not found'
+        message: "Group not found",
       });
     }
 
@@ -188,7 +200,7 @@ exports.updateGroup = async (req, res) => {
       if (existingGroup) {
         return res.status(400).json({
           success: false,
-          message: 'A group with this name already exists'
+          message: "A group with this name already exists",
         });
       }
     }
@@ -197,18 +209,35 @@ exports.updateGroup = async (req, res) => {
       req.params.id,
       { $set: req.body },
       { new: true, runValidators: true }
-    ).populate('createdBy', 'name email');
+    ).populate("createdBy", "name email");
 
     res.json({
       success: true,
-      data: { group: updatedGroup }
+      message: "Group updated successfully",
+      data: { group: updatedGroup },
     });
   } catch (error) {
-    console.error('Update group error:', error);
+    console.error("Update group error:", error);
+
+    // Handle specific MongoDB errors
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid group ID format",
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "A group with this name already exists",
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Error updating group',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error updating group",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -217,35 +246,45 @@ exports.updateGroup = async (req, res) => {
 exports.deleteGroup = async (req, res) => {
   try {
     const group = await Group.findById(req.params.id);
-    
+
     if (!group) {
       return res.status(404).json({
         success: false,
-        message: 'Group not found'
+        message: "Group not found",
       });
     }
 
-    // Check if there are any donors in this group
+    // Check if group has any donors
     const donorCount = await Donor.countDocuments({ group: req.params.id });
     if (donorCount > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete group with existing donors. Please reassign donors first.'
+        message:
+          "Cannot delete group with existing donors. Please reassign donors first.",
       });
     }
 
-    await group.deleteOne();
+    await Group.findByIdAndDelete(req.params.id);
 
     res.json({
       success: true,
-      message: 'Group deleted successfully'
+      message: "Group deleted successfully",
     });
   } catch (error) {
-    console.error('Delete group error:', error);
+    console.error("Delete group error:", error);
+
+    // Handle specific MongoDB errors
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid group ID format",
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Error deleting group',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: "Error deleting group",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };

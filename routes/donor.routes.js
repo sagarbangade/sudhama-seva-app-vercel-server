@@ -1,6 +1,6 @@
-const express = require('express');
-const { body, query } = require('express-validator');
-const { auth } = require('../middleware/auth.middleware');
+const express = require("express");
+const { body, query } = require("express-validator");
+const { auth } = require("../middleware/auth.middleware");
 const {
   createDonor,
   getDonors,
@@ -9,8 +9,8 @@ const {
   deleteDonor,
   getDonorStatus,
   updateDonorStatus,
-  triggerStatusUpdate
-} = require('../controllers/donor.controller');
+  triggerStatusUpdate,
+} = require("../controllers/donor.controller");
 
 const router = express.Router();
 
@@ -117,7 +117,7 @@ const router = express.Router();
  *         - mobileNumber
  *         - address
  *         - group
- * 
+ *
  *     CreateDonorRequest:
  *       type: object
  *       properties:
@@ -157,7 +157,7 @@ const router = express.Router();
  *         - name
  *         - mobileNumber
  *         - address
- * 
+ *
  *     UpdateDonorRequest:
  *       type: object
  *       properties:
@@ -196,7 +196,7 @@ const router = express.Router();
  *           type: boolean
  *           description: Whether the donor is active
  *           example: true
- * 
+ *
  *     DonorStatus:
  *       type: object
  *       properties:
@@ -370,7 +370,7 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- * 
+ *
  *   get:
  *     summary: Get all donors with pagination, search, and filters
  *     description: Retrieve a paginated list of donors with optional search and filtering capabilities
@@ -577,7 +577,7 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- * 
+ *
  *   put:
  *     summary: Update donor
  *     description: Update donor information. All fields are optional - only provided fields will be updated.
@@ -643,7 +643,7 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- * 
+ *
  *   delete:
  *     summary: Delete donor
  *     description: Permanently delete a donor and all associated data
@@ -751,7 +751,7 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- * 
+ *
  *   put:
  *     summary: Update donor status
  *     description: Update donor status and add entry to status history
@@ -879,69 +879,85 @@ const router = express.Router();
 
 // Validation middleware
 const donorValidation = [
-  body('hundiNo')
+  body("hundiNo").notEmpty().withMessage("Hundi number is required").trim(),
+  body("name")
     .notEmpty()
-    .withMessage('Hundi number is required')
-    .trim(),
-  body('name')
-    .notEmpty()
-    .withMessage('Name is required')
+    .withMessage("Name is required")
     .trim()
     .isLength({ min: 2 })
-    .withMessage('Name must be at least 2 characters long'),
-  body('mobileNumber')
+    .withMessage("Name must be at least 2 characters long"),
+  body("mobileNumber")
     .notEmpty()
-    .withMessage('Mobile number is required')
+    .withMessage("Mobile number is required")
     .matches(/^[0-9]{10}$/)
-    .withMessage('Please enter a valid 10-digit mobile number'),
-  body('address')
-    .notEmpty()
-    .withMessage('Address is required')
-    .trim(),
-  body('googleMapLink')
-    .optional()
-    .trim(),
-  body('group')
-    .optional()
-    .isMongoId()
-    .withMessage('Invalid group ID')
+    .withMessage("Please enter a valid 10-digit mobile number"),
+  body("address").notEmpty().withMessage("Address is required").trim(),
+  body("googleMapLink").optional().trim(),
+  body("group").optional().isMongoId().withMessage("Invalid group ID"),
 ];
 
 const statusValidation = [
-  body('status')
-    .isIn(['pending', 'collected', 'skipped'])
-    .withMessage('Invalid status value'),
-  body('notes')
-    .optional()
-    .trim()
+  body("status")
+    .isIn(["pending", "collected", "skipped"])
+    .withMessage("Invalid status value"),
+  body("notes").optional().trim(),
 ];
 
+// Parameter validation middleware
+const validateObjectId = (req, res, next) => {
+  const { id } = req.params;
+  if (!id || !require("mongoose").Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid donor ID format",
+    });
+  }
+  next();
+};
+
 // Routes
-router.post('/', auth, donorValidation, createDonor);
+router.post("/", auth, donorValidation, createDonor);
 
-router.get('/', auth, [
-  query('page').optional().isInt({ min: 1 }),
-  query('limit').optional().isInt({ min: 1, max: 100 }),
-  query('search').optional().trim(),
-  query('group').optional().isMongoId(),
-  query('status').optional().isIn(['pending', 'collected', 'skipped']),
-  query('startDate').optional().isISO8601(),
-  query('endDate').optional().isISO8601(),
-  query('isActive').optional().isBoolean()
-], getDonors);
+router.get(
+  "/",
+  auth,
+  [
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("search").optional().trim(),
+    query("group").optional().isMongoId(),
+    query("status").optional().isIn(["pending", "collected", "skipped"]),
+    query("startDate").optional().isISO8601(),
+    query("endDate").optional().isISO8601(),
+    query("isActive").optional().isBoolean(),
+  ],
+  getDonors
+);
 
-router.get('/:id', auth, getDonorById);
-router.get('/:id/status', auth, getDonorStatus);
-router.put('/:id/status', auth, statusValidation, updateDonorStatus);
+router.get("/:id", auth, validateObjectId, getDonorById);
+router.get("/:id/status", auth, validateObjectId, getDonorStatus);
+router.put(
+  "/:id/status",
+  auth,
+  validateObjectId,
+  statusValidation,
+  updateDonorStatus
+);
 
 // Manual trigger for status updates (for testing)
-router.post('/trigger-status-update', auth, triggerStatusUpdate);
+router.post("/trigger-status-update", auth, triggerStatusUpdate);
 
-router.put('/:id', auth, [
-  ...donorValidation.map(validation => validation.optional()),
-  body('isActive').optional().isBoolean()
-], updateDonor);
+router.put(
+  "/:id",
+  auth,
+  validateObjectId,
+  [
+    ...donorValidation.map((validation) => validation.optional()),
+    body("isActive").optional().isBoolean(),
+  ],
+  updateDonor
+);
 
-router.delete('/:id', auth, deleteDonor);
+router.delete("/:id", auth, validateObjectId, deleteDonor);
 
 module.exports = router;

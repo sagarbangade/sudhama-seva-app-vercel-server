@@ -1,11 +1,11 @@
-const express = require('express');
-const { body, query } = require('express-validator');
-const { auth } = require('../middleware/auth.middleware');
+const express = require("express");
+const { body, query } = require("express-validator");
+const { auth } = require("../middleware/auth.middleware");
 const {
   createDonation,
   getDonations,
-  skipDonation
-} = require('../controllers/donation.controller');
+  skipDonation,
+} = require("../controllers/donation.controller");
 
 /**
  * @swagger
@@ -77,7 +77,7 @@ const {
  *           format: date-time
  *           description: Last update timestamp
  *           example: "2024-01-15T10:30:00Z"
- * 
+ *
  *     CreateDonationRequest:
  *       type: object
  *       properties:
@@ -109,7 +109,7 @@ const {
  *         - amount
  *         - collectionDate
  *         - collectionTime
- * 
+ *
  *     SkipDonationRequest:
  *       type: object
  *       properties:
@@ -220,7 +220,7 @@ const {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- * 
+ *
  *   get:
  *     summary: Get all donations with filters
  *     description: Retrieve a paginated list of donations with optional filtering by donor, date range, and other criteria
@@ -551,7 +551,7 @@ const {
  *         description: Donation updated successfully
  *       404:
  *         description: Donation not found
- * 
+ *
  *   delete:
  *     summary: Delete donation record
  *     tags: [Donations]
@@ -587,54 +587,84 @@ const {
 
 const router = express.Router();
 
+// Parameter validation middleware
+const validateObjectId = (req, res, next) => {
+  const { id } = req.params;
+  if (!id || !require("mongoose").Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid donation ID format",
+    });
+  }
+  next();
+};
+
 // Validation middleware
 const donationValidation = [
-  body('donorId')
+  body("donorId")
     .notEmpty()
-    .withMessage('Donor ID is required')
+    .withMessage("Donor ID is required")
     .isMongoId()
-    .withMessage('Invalid donor ID'),
-  body('amount')
+    .withMessage("Invalid donor ID"),
+  body("amount")
     .isFloat({ min: 0 })
-    .withMessage('Amount must be a positive number'),
-  body('collectionDate')
+    .withMessage("Amount must be a positive number"),
+  body("collectionDate")
     .notEmpty()
-    .withMessage('Collection date is required')
+    .withMessage("Collection date is required")
     .isISO8601()
-    .withMessage('Invalid date format'),
-  body('collectionTime')
+    .withMessage("Invalid date format"),
+  body("collectionTime")
     .notEmpty()
-    .withMessage('Collection time is required')
+    .withMessage("Collection time is required")
     .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .withMessage('Please enter valid time in HH:mm format'),
-  body('notes')
-    .optional()
-    .trim()
+    .withMessage("Please enter valid time in HH:mm format"),
+  body("notes").optional().trim(),
 ];
 
 const skipValidation = [
-  body('donorId')
+  body("donorId")
     .notEmpty()
-    .withMessage('Donor ID is required')
+    .withMessage("Donor ID is required")
     .isMongoId()
-    .withMessage('Invalid donor ID'),
-  body('notes')
+    .withMessage("Invalid donor ID"),
+  body("notes")
     .notEmpty()
-    .withMessage('Notes are required when skipping collection')
-    .trim()
+    .withMessage("Notes are required when skipping collection")
+    .trim(),
 ];
 
 // Routes
-router.post('/', auth, donationValidation, createDonation);
-router.post('/skip', auth, skipValidation, skipDonation);
+router.post("/", auth, donationValidation, createDonation);
+router.post("/skip", auth, skipValidation, skipDonation);
 
-router.get('/', auth, [
-  query('donorId').optional().isMongoId(),
-  query('startDate').optional().isISO8601(),
-  query('endDate').optional().isISO8601(),
-  query('page').optional().isInt({ min: 1 }),
-  query('limit').optional().isInt({ min: 1, max: 100 }),
-  query('sort').optional().trim()
-], getDonations);
+router.get(
+  "/",
+  auth,
+  [
+    query("donorId").optional().isMongoId(),
+    query("startDate").optional().isISO8601(),
+    query("endDate").optional().isISO8601(),
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("sort").optional().trim(),
+  ],
+  getDonations
+);
+
+// Add routes for individual donation operations if needed
+router.put("/:id", auth, validateObjectId, (req, res) => {
+  res.status(501).json({
+    success: false,
+    message: "Update donation functionality not implemented yet",
+  });
+});
+
+router.delete("/:id", auth, validateObjectId, (req, res) => {
+  res.status(501).json({
+    success: false,
+    message: "Delete donation functionality not implemented yet",
+  });
+});
 
 module.exports = router;
