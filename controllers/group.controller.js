@@ -10,6 +10,7 @@ exports.createGroup = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
+        message: "Validation failed",
         errors: errors.array(),
       });
     }
@@ -34,13 +35,14 @@ exports.createGroup = async (req, res) => {
 
     res.status(201).json({
       success: true,
+      message: "Group created successfully",
       data: { group },
     });
   } catch (error) {
     console.error("Create group error:", error);
     res.status(500).json({
       success: false,
-      message: "Error creating group",
+      message: "Failed to create group. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -75,6 +77,7 @@ exports.getGroups = async (req, res) => {
 
     res.json({
       success: true,
+      message: "Groups retrieved successfully",
       data: {
         groups,
         pagination: {
@@ -88,7 +91,7 @@ exports.getGroups = async (req, res) => {
     console.error("Get groups error:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching groups",
+      message: "Failed to fetch groups. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -144,6 +147,7 @@ exports.getGroupById = async (req, res) => {
 
     res.json({
       success: true,
+      message: "Group and donors retrieved successfully",
       data: {
         group,
         donors,
@@ -167,7 +171,7 @@ exports.getGroupById = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error fetching group",
+      message: "Failed to fetch group. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -180,7 +184,7 @@ exports.updateGroup = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+        message: "Validation failed",
         errors: errors.array(),
       });
     }
@@ -236,7 +240,7 @@ exports.updateGroup = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error updating group",
+      message: "Failed to update group. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -283,7 +287,7 @@ exports.deleteGroup = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error deleting group",
+      message: "Failed to delete group. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }

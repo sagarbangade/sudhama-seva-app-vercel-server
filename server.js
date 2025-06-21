@@ -1,14 +1,15 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./config/swagger');
-const { scheduleStatusUpdates } = require('./utils/cronJobs');
-const connectDB = require('./config/database');
-require('dotenv').config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./config/swagger");
+const { scheduleStatusUpdates } = require("./utils/cronJobs");
+const connectDB = require("./config/database");
+const { ERROR_MESSAGES, createErrorResponse } = require("./utils/errorHandler");
+require("dotenv").config();
 
 const app = express();
 
@@ -16,7 +17,7 @@ const app = express();
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later'
+  message: "Too many requests from this IP, please try again later",
 });
 
 // Apply rate limiting to all routes
@@ -26,24 +27,26 @@ app.use(limiter);
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5, // Limit each IP to 5 login/register requests per hour
-  message: 'Too many login attempts, please try again later'
+  message: "Too many login attempts, please try again later",
 });
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(helmet());
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 
 // Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.get('/swagger.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/swagger.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
   res.send(swaggerSpec);
 });
 
@@ -54,43 +57,41 @@ connectDB();
 scheduleStatusUpdates();
 
 // Handle MongoDB connection events
-mongoose.connection.on('error', (err) => {
-  console.error('MongoDB connection error:', err);
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB connection error:", err);
 });
 
-mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB disconnected');
+mongoose.connection.on("disconnected", () => {
+  console.log("MongoDB disconnected");
 });
 
 // Routes
-const authRoutes = require('./routes/auth.routes');
-const donorRoutes = require('./routes/donor.routes');
-const donationRoutes = require('./routes/donation.routes');
-const groupRoutes = require('./routes/group.routes');
+const authRoutes = require("./routes/auth.routes");
+const donorRoutes = require("./routes/donor.routes");
+const donationRoutes = require("./routes/donation.routes");
+const groupRoutes = require("./routes/group.routes");
 
-app.use('/api/auth', authRoutes);
-app.use('/api/donors', donorRoutes);
-app.use('/api/donations', donationRoutes);
-app.use('/api/groups', groupRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/donors", donorRoutes);
+app.use("/api/donations", donationRoutes);
+app.use("/api/groups", groupRoutes);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).send('OK');
+app.get("/api/health", (req, res) => {
+  res.status(200).send("OK");
 });
 
 // Lightweight health check endpoint for uptime monitoring
-app.get('/ping', (req, res) => {
-  res.status(200).send('pong');
+app.get("/ping", (req, res) => {
+  res.status(200).send("pong");
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
+  res
+    .status(500)
+    .json(createErrorResponse(500, ERROR_MESSAGES.SERVER_ERROR, err.message));
 });
 
 const PORT = process.env.PORT || 3000;

@@ -274,7 +274,6 @@ const router = express.Router();
  * /api/donors:
  *   post:
  *     summary: Create a new donor
- *     description: Create a new donor with basic information and assign to a group. The collection date will be set to one month from creation if not provided.
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -284,102 +283,32 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateDonorRequest'
- *           examples:
- *             valid:
- *               summary: Valid donor data
- *               value:
- *                 hundiNo: "H123456"
- *                 name: "Krishna Das"
- *                 mobileNumber: "9876543210"
- *                 address: "123 Bhakti Marg, Mayapur, West Bengal 741313"
- *                 googleMapLink: "https://goo.gl/maps/example"
- *                 group: "507f1f77bcf86cd799439012"
- *             validation_error:
- *               summary: Validation error
- *               value:
- *                 success: false
- *                 message: "Validation error"
- *                 errors:
- *                   - field: "mobileNumber"
- *                     message: "Please enter a valid 10-digit mobile number"
- *                   - field: "name"
- *                     message: "Name must be at least 2 characters long"
- *                   - field: "googleMapLink"
- *                     message: "Google Map link is required"
- *             hundi_exists:
- *               summary: Hundi number already exists
- *               value:
- *                 success: false
- *                 message: "A donor with this hundi number already exists"
  *     responses:
  *       201:
  *         description: Donor created successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Donor created successfully"
- *                 data:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
  *                   properties:
- *                     donor:
+ *                     data:
  *                       $ref: '#/components/schemas/Donor'
- *             example:
- *               success: true
- *               message: "Donor created successfully"
- *               data:
- *                 donor:
- *                   _id: "507f1f77bcf86cd799439011"
- *                   hundiNo: "H123456"
- *                   name: "Krishna Das"
- *                   mobileNumber: "9876543210"
- *                   address: "123 Bhakti Marg, Mayapur, West Bengal 741313"
- *                   googleMapLink: "https://goo.gl/maps/example"
- *                   group:
- *                     _id: "507f1f77bcf86cd799439012"
- *                     name: "Mayapur Zone"
- *                     area: "ISKCON Mayapur Campus"
- *                   status: "pending"
- *                   collectionDate: "2024-02-15T00:00:00Z"
- *                   isActive: true
- *                   createdBy:
- *                     _id: "507f1f77bcf86cd799439013"
- *                     name: "Admin User"
- *                     email: "admin@example.com"
- *                   createdAt: "2024-01-15T10:30:00Z"
- *                   updatedAt: "2024-01-15T10:30:00Z"
  *       400:
- *         description: Validation error or hundi number already exists
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               validation_error:
- *                 summary: Validation error
- *                 value:
- *                   success: false
- *                   message: "Validation error"
- *                   errors:
- *                     - field: "mobileNumber"
- *                       message: "Please enter a valid 10-digit mobile number"
- *                     - field: "name"
- *                       message: "Name must be at least 2 characters long"
- *                     - field: "googleMapLink"
- *                       message: "Google Map link is required"
- *               hundi_exists:
- *                 summary: Hundi number already exists
- *                 value:
- *                   success: false
- *                   message: "A donor with this hundi number already exists"
+ *               $ref: '#/components/schemas/ValidationError'
  *       401:
  *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       409:
+ *         description: Hundi number already exists
  *         content:
  *           application/json:
  *             schema:
@@ -392,7 +321,7 @@ const router = express.Router();
  *               $ref: '#/components/schemas/Error'
  *
  *   get:
- *     summary: Get all donors
+ *     summary: Get all donors with pagination and filters
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -401,19 +330,22 @@ const router = express.Router();
  *         name: page
  *         schema:
  *           type: integer
+ *           minimum: 1
  *           default: 1
  *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 100
  *           default: 10
- *         description: Items per page
+ *         description: Number of items per page
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: Search by name, hundi number, or mobile number
+ *         description: Search term for name, hundi number, or mobile number
  *       - in: query
  *         name: group
  *         schema:
@@ -426,38 +358,37 @@ const router = express.Router();
  *           enum: [pending, collected, skipped]
  *         description: Filter by status
  *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by start date (YYYY-MM-DD)
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by end date (YYYY-MM-DD)
- *       - in: query
  *         name: isActive
  *         schema:
  *           type: boolean
  *         description: Filter by active status
  *     responses:
  *       200:
- *         description: List of donors
+ *         description: List of donors retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Donor'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         donors:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Donor'
+ *                         pagination:
+ *                           $ref: '#/components/schemas/Pagination'
  *       401:
  *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       500:
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -468,8 +399,7 @@ const router = express.Router();
  * @swagger
  * /api/donors/{id}:
  *   get:
- *     summary: Get donor by ID
- *     description: Retrieve detailed information about a specific donor
+ *     summary: Get a donor by ID
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -480,68 +410,39 @@ const router = express.Router();
  *         schema:
  *           type: string
  *         description: Donor ID
- *         example: "507f1f77bcf86cd799439011"
  *     responses:
  *       200:
  *         description: Donor retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
  *                   properties:
- *                     donor:
+ *                     data:
  *                       $ref: '#/components/schemas/Donor'
- *             example:
- *               success: true
- *               data:
- *                 donor:
- *                   _id: "507f1f77bcf86cd799439011"
- *                   hundiNo: "H123456"
- *                   name: "Krishna Das"
- *                   mobileNumber: "9876543210"
- *                   address: "123 Bhakti Marg, Mayapur"
- *                   googleMapLink: "https://goo.gl/maps/example"
- *                   group:
- *                     _id: "507f1f77bcf86cd799439012"
- *                     name: "Mayapur Zone"
- *                     area: "ISKCON Mayapur Campus"
- *                   status: "pending"
- *                   collectionDate: "2024-02-15T00:00:00Z"
- *                   statusHistory:
- *                     - status: "pending"
- *                       date: "2024-01-15T10:30:00Z"
- *                       notes: "Donor created"
- *                   isActive: true
- *                   createdBy:
- *                     _id: "507f1f77bcf86cd799439013"
- *                     name: "Admin User"
- *                     email: "admin@example.com"
- *                   createdAt: "2024-01-15T10:30:00Z"
- *                   updatedAt: "2024-01-15T10:30:00Z"
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
  *       404:
  *         description: Donor not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *             example:
- *               success: false
- *               message: "Donor not found"
- *       401:
- *         description: Not authorized
+ *       500:
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *
  *   put:
- *     summary: Update donor
+ *     summary: Update a donor
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -557,22 +458,52 @@ const router = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Donor'
+ *             $ref: '#/components/schemas/UpdateDonorRequest'
  *     responses:
  *       200:
- *         description: Donor updated
+ *         description: Donor updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Donor'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/Donor'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Donor not found
+ *         content:
+ *           application/json:
+ *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Hundi number already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *
  *   delete:
- *     summary: Delete donor
+ *     summary: Delete a donor
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -585,13 +516,25 @@ const router = express.Router();
  *         description: Donor ID
  *     responses:
  *       200:
- *         description: Donor deleted
+ *         description: Donor deleted successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Donor'
- *       400:
- *         description: Validation error
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Donor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -602,8 +545,7 @@ const router = express.Router();
  * @swagger
  * /api/donors/{id}/status:
  *   get:
- *     summary: Get donor status with recent donations
- *     description: Retrieve donor status information including recent donations and next collection date
+ *     summary: Get donor's status details
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -614,59 +556,39 @@ const router = express.Router();
  *         schema:
  *           type: string
  *         description: Donor ID
- *         example: "507f1f77bcf86cd799439011"
  *     responses:
  *       200:
  *         description: Donor status retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   $ref: '#/components/schemas/DonorStatus'
- *             example:
- *               success: true
- *               data:
- *                 donor:
- *                   _id: "507f1f77bcf86cd799439011"
- *                   name: "Krishna Das"
- *                   hundiNo: "H123456"
- *                   status: "pending"
- *                   collectionDate: "2024-02-15T00:00:00Z"
- *                   statusHistory:
- *                     - status: "pending"
- *                       date: "2024-01-15T10:30:00Z"
- *                       notes: "Donor created"
- *                 nextCollectionDate: "2024-03-15T00:00:00Z"
- *                 recentDonations:
- *                   - _id: "507f1f77bcf86cd799439014"
- *                     amount: 1000
- *                     collectionDate: "2024-01-15T10:30:00Z"
- *                     notes: "Monthly donation"
- *                 lastStatus:
- *                   status: "pending"
- *                   date: "2024-01-15T10:30:00Z"
- *                   notes: "Donor created"
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/DonorStatus'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
  *       404:
  *         description: Donor not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Not authorized
+ *       500:
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *
  *   put:
- *     summary: Update donor status
- *     description: Update donor status and add entry to status history
+ *     summary: Update donor's status
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -677,7 +599,6 @@ const router = express.Router();
  *         schema:
  *           type: string
  *         description: Donor ID
- *         example: "507f1f77bcf86cd799439011"
  *     requestBody:
  *       required: true
  *       content:
@@ -689,11 +610,9 @@ const router = express.Router();
  *                 type: string
  *                 enum: [pending, collected, skipped]
  *                 description: New status
- *                 example: "collected"
  *               notes:
  *                 type: string
  *                 description: Optional notes about the status change
- *                 example: "Collection completed successfully"
  *             required:
  *               - status
  *     responses:
@@ -702,33 +621,32 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
  *                   properties:
- *                     donor:
- *                       $ref: '#/components/schemas/Donor'
+ *                     data:
+ *                       $ref: '#/components/schemas/DonorStatus'
  *       400:
- *         description: Invalid status transition
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               success: false
- *               message: "Invalid status transition from collected to pending"
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
  *       404:
  *         description: Donor not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Not authorized
+ *       500:
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -863,22 +781,57 @@ const validateObjectId = (req, res, next) => {
   next();
 };
 
+// Add validation error handling middleware
+const handleValidationErrors = (req, res, next) => {
+  const errors = require("express-validator").validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors.array(),
+    });
+  }
+  next();
+};
+
 // Routes
-router.post("/", auth, donorValidation, createDonor);
+router.post("/", auth, donorValidation, handleValidationErrors, createDonor);
 
 router.get(
   "/",
   auth,
   [
-    query("page").optional().isInt({ min: 1 }),
-    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
     query("search").optional().trim(),
-    query("group").optional().isMongoId(),
-    query("status").optional().isIn(["pending", "collected", "skipped"]),
-    query("startDate").optional().isISO8601(),
-    query("endDate").optional().isISO8601(),
-    query("isActive").optional().isBoolean(),
+    query("group")
+      .optional()
+      .isMongoId()
+      .withMessage("Invalid group ID format"),
+    query("status")
+      .optional()
+      .isIn(["pending", "collected", "skipped"])
+      .withMessage("Invalid status value"),
+    query("startDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid start date format"),
+    query("endDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid end date format"),
+    query("isActive")
+      .optional()
+      .isBoolean()
+      .withMessage("isActive must be true or false"),
   ],
+  handleValidationErrors,
   getDonors
 );
 
@@ -889,13 +842,21 @@ router.put(
   auth,
   validateObjectId,
   statusValidation,
+  handleValidationErrors,
   updateDonorStatus
 );
 
 // Manual trigger for status updates (for testing)
 router.post("/trigger-status-update", auth, triggerStatusUpdate);
 
-router.put("/:id", auth, validateObjectId, donorUpdateValidation, updateDonor);
+router.put(
+  "/:id",
+  auth,
+  validateObjectId,
+  donorUpdateValidation,
+  handleValidationErrors,
+  updateDonor
+);
 
 router.delete("/:id", auth, validateObjectId, deleteDonor);
 

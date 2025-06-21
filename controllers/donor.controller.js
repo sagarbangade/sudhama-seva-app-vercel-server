@@ -32,6 +32,7 @@ exports.createDonor = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
+        message: "Validation failed",
         errors: errors.array(),
       });
     }
@@ -68,7 +69,7 @@ exports.createDonor = async (req, res) => {
       if (!defaultGroup) {
         return res.status(500).json({
           success: false,
-          message: "Default group not found",
+          message: "Default group not found. Please create a group first.",
         });
       }
       groupId = defaultGroup._id;
@@ -111,7 +112,7 @@ exports.createDonor = async (req, res) => {
     console.error("Create donor error:", error);
     res.status(500).json({
       success: false,
-      message: "Error creating donor",
+      message: "Failed to create donor. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -158,6 +159,7 @@ exports.getDonors = async (req, res) => {
 
     res.json({
       success: true,
+      message: "Donors retrieved successfully",
       data: {
         donors,
         pagination: {
@@ -171,7 +173,7 @@ exports.getDonors = async (req, res) => {
     console.error("Get donors error:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching donors",
+      message: "Failed to fetch donors. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -194,6 +196,7 @@ exports.getDonorById = async (req, res) => {
 
     res.json({
       success: true,
+      message: "Donor retrieved successfully",
       data: { donor },
     });
   } catch (error) {
@@ -209,7 +212,7 @@ exports.getDonorById = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error fetching donor",
+      message: "Failed to fetch donor. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -236,7 +239,7 @@ exports.updateDonor = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+        message: "Validation failed",
         errors: errors.array(),
       });
     }
@@ -296,7 +299,7 @@ exports.updateDonor = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error updating donor",
+      message: "Failed to update donor. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -317,6 +320,7 @@ exports.getDonorStatus = async (req, res) => {
 
     res.json({
       success: true,
+      message: "Donor status retrieved successfully",
       data: { donor },
     });
   } catch (error) {
@@ -332,7 +336,7 @@ exports.getDonorStatus = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error fetching donor status",
+      message: "Failed to fetch donor status. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -381,7 +385,7 @@ exports.deleteDonor = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error deleting donor",
+      message: "Failed to delete donor. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -395,7 +399,7 @@ exports.updateDonorStatus = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+        message: "Validation failed",
         errors: errors.array(),
       });
     }
@@ -460,7 +464,7 @@ exports.updateDonorStatus = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error updating donor status",
+      message: "Failed to update donor status. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -474,14 +478,14 @@ exports.triggerStatusUpdate = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Donor status update completed",
+      message: "Donor status update completed successfully",
       data: result,
     });
   } catch (error) {
     console.error("Manual status update error:", error);
     res.status(500).json({
       success: false,
-      message: "Error updating donor status",
+      message: "Failed to update donor status. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }

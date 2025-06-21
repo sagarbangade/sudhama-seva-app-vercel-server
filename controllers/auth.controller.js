@@ -1,6 +1,12 @@
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 const User = require("../models/user.model");
+const {
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
+  createErrorResponse,
+  createSuccessResponse,
+} = require("../utils/errorHandler");
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -17,7 +23,7 @@ exports.register = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+        message: ERROR_MESSAGES.VALIDATION_FAILED,
         errors: errors.array(),
       });
     }
@@ -27,10 +33,9 @@ exports.register = async (req, res) => {
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "User already exists with this email",
-      });
+      return res
+        .status(400)
+        .json(createErrorResponse(400, "User already exists with this email"));
     }
 
     // Create new user
@@ -43,10 +48,8 @@ exports.register = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
-    res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      data: {
+    res.status(201).json(
+      createSuccessResponse(SUCCESS_MESSAGES.REGISTER_SUCCESS, {
         token,
         user: {
           id: user._id,
@@ -55,24 +58,23 @@ exports.register = async (req, res) => {
           isActive: user.isActive,
           createdAt: user.createdAt,
         },
-      },
-    });
+      })
+    );
   } catch (error) {
     console.error("Registration error:", error);
 
     // Handle specific MongoDB errors
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "User already exists with this email",
-      });
+      return res
+        .status(400)
+        .json(createErrorResponse(400, "User already exists with this email"));
     }
 
-    res.status(500).json({
-      success: false,
-      message: "Error in registration",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
+    res
+      .status(500)
+      .json(
+        createErrorResponse(500, ERROR_MESSAGES.SERVER_ERROR, error.message)
+      );
   }
 };
 
@@ -85,27 +87,24 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
+      return res
+        .status(401)
+        .json(createErrorResponse(401, ERROR_MESSAGES.INVALID_CREDENTIALS));
     }
 
     // Check if user is active
     if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: "User account is deactivated",
-      });
+      return res
+        .status(401)
+        .json(createErrorResponse(401, ERROR_MESSAGES.USER_DEACTIVATED));
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
+      return res
+        .status(401)
+        .json(createErrorResponse(401, ERROR_MESSAGES.INVALID_CREDENTIALS));
     }
 
     // Update last login
@@ -115,10 +114,8 @@ exports.login = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
-    res.json({
-      success: true,
-      message: "Login successful",
-      data: {
+    res.json(
+      createSuccessResponse(SUCCESS_MESSAGES.LOGIN_SUCCESS, {
         token,
         user: {
           id: user._id,
@@ -128,15 +125,15 @@ exports.login = async (req, res) => {
           lastLogin: user.lastLogin,
           createdAt: user.createdAt,
         },
-      },
-    });
+      })
+    );
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error in login",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
+    res
+      .status(500)
+      .json(
+        createErrorResponse(500, ERROR_MESSAGES.SERVER_ERROR, error.message)
+      );
   }
 };
 
@@ -146,16 +143,13 @@ exports.getProfile = async (req, res) => {
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return res
+        .status(404)
+        .json(createErrorResponse(404, ERROR_MESSAGES.USER_NOT_FOUND));
     }
 
-    res.json({
-      success: true,
-      message: "Profile retrieved successfully",
-      data: {
+    res.json(
+      createSuccessResponse(SUCCESS_MESSAGES.PROFILE_RETRIEVED, {
         user: {
           id: user._id,
           name: user.name,
@@ -165,23 +159,22 @@ exports.getProfile = async (req, res) => {
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         },
-      },
-    });
+      })
+    );
   } catch (error) {
     console.error("Get profile error:", error);
 
     // Handle specific MongoDB errors
     if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID format",
-      });
+      return res
+        .status(400)
+        .json(createErrorResponse(400, ERROR_MESSAGES.INVALID_ID));
     }
 
-    res.status(500).json({
-      success: false,
-      message: "Error fetching profile",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
+    res
+      .status(500)
+      .json(
+        createErrorResponse(500, ERROR_MESSAGES.SERVER_ERROR, error.message)
+      );
   }
 };

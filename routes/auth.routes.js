@@ -1,7 +1,11 @@
-const express = require('express');
-const { body } = require('express-validator');
-const { register, login, getProfile } = require('../controllers/auth.controller');
-const { auth } = require('../middleware/auth.middleware');
+const express = require("express");
+const { body } = require("express-validator");
+const {
+  register,
+  login,
+  getProfile,
+} = require("../controllers/auth.controller");
+const { auth } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
@@ -48,7 +52,7 @@ const router = express.Router();
  *       required:
  *         - name
  *         - email
- * 
+ *
  *     RegisterRequest:
  *       type: object
  *       properties:
@@ -72,7 +76,7 @@ const router = express.Router();
  *         - name
  *         - email
  *         - password
- * 
+ *
  *     LoginRequest:
  *       type: object
  *       properties:
@@ -89,25 +93,21 @@ const router = express.Router();
  *       required:
  *         - email
  *         - password
- * 
+ *
  *     AuthResponse:
- *       type: object
- *       properties:
- *         success:
- *           type: boolean
- *           example: true
- *         message:
- *           type: string
- *           example: "Login successful"
- *         data:
- *           type: object
+ *       allOf:
+ *         - $ref: '#/components/schemas/SuccessResponse'
+ *         - type: object
  *           properties:
- *             user:
- *               $ref: '#/components/schemas/User'
- *             token:
- *               type: string
- *               description: JWT token for authentication
- *               example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *             data:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 token:
+ *                   type: string
+ *                   description: JWT token for authentication
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  */
 
 /**
@@ -134,6 +134,18 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       409:
+ *         description: Email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
  *               $ref: '#/components/schemas/Error'
  */
 
@@ -156,8 +168,20 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
  *       401:
  *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       500:
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -178,50 +202,72 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/User'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/User'
  *       401:
  *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       500:
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
 
+// Add validation error handling middleware
+const handleValidationErrors = (req, res, next) => {
+  const errors = require("express-validator").validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors.array(),
+    });
+  }
+  next();
+};
+
 // Validation middleware
 const registerValidation = [
-  body('name')
+  body("name")
     .trim()
     .isLength({ min: 2 })
-    .withMessage('Name must be at least 2 characters long'),
-  body('email')
+    .withMessage("Name must be at least 2 characters long"),
+  body("email")
     .trim()
     .isEmail()
-    .withMessage('Please enter a valid email')
+    .withMessage("Please enter a valid email")
     .normalizeEmail(),
-  body('password')
+  body("password")
     .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long')
+    .withMessage("Password must be at least 6 characters long")
     .matches(/\d/)
-    .withMessage('Password must contain at least one number')
+    .withMessage("Password must contain at least one number")
     .matches(/[A-Z]/)
-    .withMessage('Password must contain at least one uppercase letter')
+    .withMessage("Password must contain at least one uppercase letter"),
 ];
 
 // Add login validation middleware
 const loginValidation = [
-  body('email')
+  body("email")
     .trim()
     .isEmail()
-    .withMessage('Please enter a valid email')
+    .withMessage("Please enter a valid email")
     .normalizeEmail(),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required')
+  body("password").notEmpty().withMessage("Password is required"),
 ];
 
 // Routes
-router.post('/register', registerValidation, register);
-router.post('/login', loginValidation, login);
-router.get('/profile', auth, getProfile);
+router.post("/register", registerValidation, handleValidationErrors, register);
+router.post("/login", loginValidation, handleValidationErrors, login);
+router.get("/profile", auth, getProfile);
 
 module.exports = router;

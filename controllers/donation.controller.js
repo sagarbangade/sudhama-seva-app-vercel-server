@@ -1,42 +1,53 @@
 const { validationResult } = require("express-validator");
-const Donation = require("../models/donation.model");
-const Donor = require("../models/donor.model");
+const { Donation } = require("../models/donation.model");
+const { Donor } = require("../models/donor.model");
 const mongoose = require("mongoose");
+const {
+  createErrorResponse,
+  createSuccessResponse,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
+  STATUS_CODES,
+  ERROR_CODES,
+} = require("../utils/errorHandler");
 
 // Create a new donation record
 exports.createDonation = async (req, res) => {
-  const session = await mongoose.startSession();
+  let session;
   try {
+    // Start transaction
+    session = await mongoose.startSession();
     session.startTransaction();
 
+    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
+      throw {
+        status: STATUS_CODES.BAD_REQUEST,
+        message: ERROR_MESSAGES.VALIDATION_FAILED,
         errors: errors.array(),
-      });
+      };
     }
 
-    const { donorId, amount, collectionDate, notes, collectionTime } = req.body;
+    const { donorId, amount, collectionDate, collectionTime, notes } = req.body;
 
-    // Check if donor exists and is active
+    // Find donor
     const donor = await Donor.findById(donorId).session(session);
     if (!donor) {
-      return res.status(404).json({
-        success: false,
-        message: "Donor not found",
-      });
+      throw {
+        status: STATUS_CODES.NOT_FOUND,
+        message: ERROR_MESSAGES.DONOR_NOT_FOUND,
+      };
     }
 
     if (!donor.isActive) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot create donation for inactive donor",
-      });
+      throw {
+        status: STATUS_CODES.BAD_REQUEST,
+        message: ERROR_MESSAGES.INACTIVE_DONOR,
+      };
     }
 
-    // Create donation record
+    // Create donation
     const donation = await Donation.create(
       [
         {
@@ -51,54 +62,106 @@ exports.createDonation = async (req, res) => {
       { session }
     );
 
-    // Update donor status and set next collection date
-    if (req.body.nextCollectionDate) {
-      donor.collectionDate = new Date(req.body.nextCollectionDate);
-    } else {
-      donor.collectionDate = new Date(collectionDate);
-      donor.collectionDate.setMonth(donor.collectionDate.getMonth() + 1);
-    }
-    donor.status = "collected";
-    donor.statusHistory.push({
-      status: "collected",
-      date: collectionDate,
-      notes: notes || "Collection completed",
-    });
+    // Update donor status and collection date
+    const nextCollectionDate = new Date(collectionDate);
+    nextCollectionDate.setMonth(nextCollectionDate.getMonth() + 1);
 
-    await donor.save({ session });
-    await session.commitTransaction();
-
-    const populatedDonation = await Donation.findById(donation[0]._id).populate(
-      [
-        { path: "donor", select: "name hundiNo status collectionDate" },
-        { path: "collectedBy", select: "name email" },
-      ]
+    await Donor.findByIdAndUpdate(
+      donorId,
+      {
+        status: "collected",
+        collectionDate: nextCollectionDate,
+        $push: {
+          statusHistory: {
+            status: "collected",
+            date: new Date(),
+            notes: notes || "Monthly donation collected",
+          },
+        },
+      },
+      { session, new: true }
     );
 
-    res.status(201).json({
-      success: true,
-      message: "Donation created successfully",
-      data: { donation: populatedDonation },
-    });
+    // Commit transaction
+    await session.commitTransaction();
+
+    const populatedDonation = await Donation.findById(donation[0]._id)
+      .populate([
+        { path: "donor", select: "name hundiNo status collectionDate" },
+        { path: "collectedBy", select: "name email" },
+      ])
+      .session(session);
+
+    res.status(STATUS_CODES.CREATED).json(
+      createSuccessResponse(SUCCESS_MESSAGES.DONATION_CREATED, {
+        donation: populatedDonation,
+      })
+    );
   } catch (error) {
-    await session.abortTransaction();
+    // Rollback transaction if it exists and is active
+    if (session) {
+      try {
+        await session.abortTransaction();
+      } catch (rollbackError) {
+        console.error("Error rolling back transaction:", rollbackError);
+      }
+    }
+
     console.error("Create donation error:", error);
+
+    // Handle known errors
+    if (error.status) {
+      return res
+        .status(error.status)
+        .json(createErrorResponse(error.status, error.message, error.errors));
+    }
 
     // Handle specific MongoDB errors
     if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid donor ID format",
-      });
+      return res
+        .status(STATUS_CODES.BAD_REQUEST)
+        .json(
+          createErrorResponse(
+            STATUS_CODES.BAD_REQUEST,
+            ERROR_MESSAGES.INVALID_ID,
+            null,
+            ERROR_CODES.VALIDATION_ERROR
+          )
+        );
     }
 
-    res.status(500).json({
-      success: false,
-      message: "Error creating donation record",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
+    // Handle validation errors from Mongoose
+    if (error.name === "ValidationError") {
+      return res.status(STATUS_CODES.BAD_REQUEST).json(
+        createErrorResponse(
+          STATUS_CODES.BAD_REQUEST,
+          ERROR_MESSAGES.VALIDATION_FAILED,
+          Object.values(error.errors).map((err) => ({
+            field: err.path,
+            message: err.message,
+          }))
+        )
+      );
+    }
+
+    res
+      .status(STATUS_CODES.INTERNAL_SERVER_ERROR)
+      .json(
+        createErrorResponse(
+          STATUS_CODES.INTERNAL_SERVER_ERROR,
+          ERROR_MESSAGES.SERVER_ERROR,
+          process.env.NODE_ENV === "development" ? error.message : undefined
+        )
+      );
   } finally {
-    session.endSession();
+    // Always end session
+    if (session) {
+      try {
+        await session.endSession();
+      } catch (error) {
+        console.error("Error ending session:", error);
+      }
+    }
   }
 };
 
@@ -143,6 +206,7 @@ exports.getDonations = async (req, res) => {
 
     res.json({
       success: true,
+      message: "Donations retrieved successfully",
       data: {
         donations,
         pagination: {
@@ -156,7 +220,7 @@ exports.getDonations = async (req, res) => {
     console.error("Get donations error:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching donations",
+      message: "Failed to fetch donations. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -224,7 +288,7 @@ exports.skipDonation = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Error skipping collection",
+      message: "Failed to skip collection. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   } finally {

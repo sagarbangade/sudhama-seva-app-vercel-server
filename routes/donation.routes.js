@@ -141,75 +141,32 @@ const {
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateDonationRequest'
- *           examples:
- *             valid:
- *               summary: Valid donation data
- *               value:
- *                 donorId: "507f1f77bcf86cd799439011"
- *                 amount: 1000
- *                 collectionDate: "2024-01-15T10:30:00Z"
- *                 collectionTime: "10:30"
- *                 notes: "Monthly donation collected"
  *     responses:
  *       201:
  *         description: Donation record created successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
  *                   properties:
- *                     donation:
+ *                     data:
  *                       $ref: '#/components/schemas/Donation'
- *             example:
- *               success: true
- *               data:
- *                 donation:
- *                   _id: "507f1f77bcf86cd799439014"
- *                   donor:
- *                     _id: "507f1f77bcf86cd799439011"
- *                     name: "Krishna Das"
- *                     hundiNo: "H123456"
- *                     status: "collected"
- *                   amount: 1000
- *                   collectionDate: "2024-01-15T10:30:00Z"
- *                   collectionTime: "10:30"
- *                   notes: "Monthly donation collected"
- *                   collectedBy:
- *                     _id: "507f1f77bcf86cd799439013"
- *                     name: "Admin User"
- *                     email: "admin@example.com"
- *                   createdAt: "2024-01-15T10:30:00Z"
- *                   updatedAt: "2024-01-15T10:30:00Z"
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               validation_error:
- *                 summary: Validation error
- *                 value:
- *                   success: false
- *                   message: "Validation error"
- *                   errors:
- *                     - field: "amount"
- *                       message: "Amount must be a positive number"
- *                     - field: "collectionTime"
- *                       message: "Please enter valid time in HH:mm format"
- *               donor_not_found:
- *                 summary: Donor not found
- *                 value:
- *                   success: false
- *                   message: "Donor not found"
+ *               $ref: '#/components/schemas/ValidationError'
  *       401:
  *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Donor not found
  *         content:
  *           application/json:
  *             schema:
@@ -222,7 +179,7 @@ const {
  *               $ref: '#/components/schemas/Error'
  *
  *   get:
- *     summary: Get all donations
+ *     summary: Get all donations with pagination and filters
  *     tags: [Donations]
  *     security:
  *       - BearerAuth: []
@@ -248,39 +205,42 @@ const {
  *         name: page
  *         schema:
  *           type: integer
+ *           minimum: 1
  *           default: 1
  *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 100
  *           default: 10
- *         description: Items per page
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *         description: Sort order
+ *         description: Number of items per page
  *     responses:
  *       200:
- *         description: List of donations
+ *         description: List of donations retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Donation'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         donations:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Donation'
+ *                         pagination:
+ *                           $ref: '#/components/schemas/Pagination'
  *       401:
  *         description: Not authorized
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/AuthError'
  *       500:
  *         description: Server error
  *         content:
@@ -293,8 +253,8 @@ const {
  * @swagger
  * /api/donations/skip:
  *   post:
- *     summary: Skip donation for a donor
- *     description: Mark a donation as skipped for a donor. This will update the donor's status to 'skipped' and set the next collection date to one month from the skip date.
+ *     summary: Skip a donation for a donor
+ *     description: Mark a donor's donation as skipped for the current collection period. This will update the donor's status to 'skipped' and set the next collection date.
  *     tags: [Donations]
  *     security:
  *       - BearerAuth: []
@@ -304,74 +264,32 @@ const {
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/SkipDonationRequest'
- *           examples:
- *             valid:
- *               summary: Valid skip data
- *               value:
- *                 donorId: "507f1f77bcf86cd799439011"
- *                 notes: "Donor requested to skip this month"
  *     responses:
  *       200:
- *         description: Collection skipped successfully
+ *         description: Donation skipped successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Collection skipped successfully"
- *                 data:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
  *                   properties:
- *                     donor:
- *                       $ref: '#/components/schemas/Donor'
- *             example:
- *               success: true
- *               message: "Collection skipped successfully"
- *               data:
- *                 donor:
- *                   _id: "507f1f77bcf86cd799439011"
- *                   hundiNo: "H123456"
- *                   name: "Krishna Das"
- *                   mobileNumber: "9876543210"
- *                   address: "123 Bhakti Marg, Mayapur"
- *                   googleMapLink: "https://goo.gl/maps/example"
- *                   group:
- *                     _id: "507f1f77bcf86cd799439012"
- *                     name: "Mayapur Zone"
- *                     area: "ISKCON Mayapur Campus"
- *                   status: "skipped"
- *                   collectionDate: "2024-02-15T00:00:00Z"
- *                   isActive: true
- *                   createdBy:
- *                     _id: "507f1f77bcf86cd799439013"
- *                     name: "Admin User"
- *                     email: "admin@example.com"
- *                   createdAt: "2024-01-15T10:30:00Z"
- *                   updatedAt: "2024-01-15T10:30:00Z"
+ *                     data:
+ *                       $ref: '#/components/schemas/DonorStatus'
  *       400:
- *         description: Validation error or donor not found
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               validation_error:
- *                 summary: Validation error
- *                 value:
- *                   success: false
- *                   message: "Notes are required when skipping collection"
- *               donor_not_found:
- *                 summary: Donor not found
- *                 value:
- *                   success: false
- *                   message: "Donor not found"
+ *               $ref: '#/components/schemas/ValidationError'
  *       401:
  *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Donor not found
  *         content:
  *           application/json:
  *             schema:
@@ -563,6 +481,19 @@ const validateObjectId = (req, res, next) => {
   next();
 };
 
+// Add validation error handling middleware
+const handleValidationErrors = (req, res, next) => {
+  const errors = require("express-validator").validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors.array(),
+    });
+  }
+  next();
+};
+
 // Validation middleware
 const donationValidation = [
   body("donorId")
@@ -599,20 +530,48 @@ const skipValidation = [
 ];
 
 // Routes
-router.post("/", auth, donationValidation, createDonation);
-router.post("/skip", auth, skipValidation, skipDonation);
+router.post(
+  "/",
+  auth,
+  donationValidation,
+  handleValidationErrors,
+  createDonation
+);
+router.post(
+  "/skip",
+  auth,
+  skipValidation,
+  handleValidationErrors,
+  skipDonation
+);
 
 router.get(
   "/",
   auth,
   [
-    query("donorId").optional().isMongoId(),
-    query("startDate").optional().isISO8601(),
-    query("endDate").optional().isISO8601(),
-    query("page").optional().isInt({ min: 1 }),
-    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("donorId")
+      .optional()
+      .isMongoId()
+      .withMessage("Invalid donor ID format"),
+    query("startDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid start date format"),
+    query("endDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid end date format"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
     query("sort").optional().trim(),
   ],
+  handleValidationErrors,
   getDonations
 );
 

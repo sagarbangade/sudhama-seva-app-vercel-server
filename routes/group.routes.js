@@ -151,68 +151,32 @@ const {
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateGroupRequest'
- *           examples:
- *             valid:
- *               summary: Valid group data
- *               value:
- *                 name: "Mayapur Zone"
- *                 area: "ISKCON Mayapur Campus"
- *                 description: "Devotees residing in Mayapur area including temple premises"
  *     responses:
  *       201:
  *         description: Group created successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
  *                   properties:
- *                     group:
+ *                     data:
  *                       $ref: '#/components/schemas/Group'
- *             example:
- *               success: true
- *               data:
- *                 group:
- *                   _id: "507f1f77bcf86cd799439012"
- *                   name: "Mayapur Zone"
- *                   area: "ISKCON Mayapur Campus"
- *                   description: "Devotees residing in Mayapur area including temple premises"
- *                   isActive: true
- *                   createdBy:
- *                     _id: "507f1f77bcf86cd799439013"
- *                     name: "Admin User"
- *                     email: "admin@example.com"
- *                   createdAt: "2024-01-15T10:30:00Z"
- *                   updatedAt: "2024-01-15T10:30:00Z"
  *       400:
- *         description: Validation error or group name already exists
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               validation_error:
- *                 summary: Validation error
- *                 value:
- *                   success: false
- *                   message: "Validation error"
- *                   errors:
- *                     - field: "name"
- *                       message: "Name must be at least 2 characters long"
- *                     - field: "area"
- *                       message: "Area is required"
- *               name_exists:
- *                 summary: Group name already exists
- *                 value:
- *                   success: false
- *                   message: "A group with this name already exists"
+ *               $ref: '#/components/schemas/ValidationError'
  *       401:
  *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       409:
+ *         description: Group name already exists
  *         content:
  *           application/json:
  *             schema:
@@ -225,7 +189,7 @@ const {
  *               $ref: '#/components/schemas/Error'
  *
  *   get:
- *     summary: Get all groups
+ *     summary: Get all groups with pagination and filters
  *     tags: [Groups]
  *     security:
  *       - BearerAuth: []
@@ -244,39 +208,42 @@ const {
  *         name: page
  *         schema:
  *           type: integer
+ *           minimum: 1
  *           default: 1
  *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 100
  *           default: 10
- *         description: Items per page
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *         description: Sort order
+ *         description: Number of items per page
  *     responses:
  *       200:
- *         description: List of groups
+ *         description: List of groups retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Group'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         groups:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Group'
+ *                         pagination:
+ *                           $ref: '#/components/schemas/Pagination'
  *       401:
  *         description: Not authorized
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/AuthError'
  *       500:
  *         description: Server error
  *         content:
@@ -289,8 +256,7 @@ const {
  * @swagger
  * /api/groups/{id}:
  *   get:
- *     summary: Get group by ID with paginated donors
- *     description: Retrieve detailed information about a specific group including its donors
+ *     summary: Get a group by ID with its donors
  *     tags: [Groups]
  *     security:
  *       - BearerAuth: []
@@ -301,110 +267,41 @@ const {
  *         schema:
  *           type: string
  *         description: Group ID
- *         example: "507f1f77bcf86cd799439012"
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search donors by name, hundi number, or mobile number
- *         example: "Krishna"
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [pending, collected, skipped]
- *         description: Filter donors by status
- *         example: "pending"
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by collection date start (YYYY-MM-DD)
- *         example: "2024-01-01"
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by collection date end (YYYY-MM-DD)
- *         example: "2024-12-31"
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
- *           default: 1
  *           minimum: 1
- *         description: Page number for pagination
- *         example: 1
+ *           default: 1
+ *         description: Page number for donors list
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *           default: 10
  *           minimum: 1
  *           maximum: 100
- *         description: Number of items per page
- *         example: 10
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *           default: "name"
- *         description: Sort field for donors list
- *         example: "name"
+ *           default: 10
+ *         description: Number of donors per page
  *     responses:
  *       200:
- *         description: Group retrieved successfully with paginated donors
+ *         description: Group and its donors retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   $ref: '#/components/schemas/GroupWithDonors'
- *             example:
- *               success: true
- *               data:
- *                 group:
- *                   _id: "507f1f77bcf86cd799439012"
- *                   name: "Mayapur Zone"
- *                   area: "ISKCON Mayapur Campus"
- *                   description: "Devotees residing in Mayapur area including temple premises"
- *                   isActive: true
- *                   createdBy:
- *                     _id: "507f1f77bcf86cd799439013"
- *                     name: "Admin User"
- *                     email: "admin@example.com"
- *                   createdAt: "2024-01-15T10:30:00Z"
- *                   updatedAt: "2024-01-15T10:30:00Z"
- *                 donors:
- *                   - _id: "507f1f77bcf86cd799439011"
- *                     name: "Krishna Das"
- *                     hundiNo: "H123456"
- *                     collectionDate: "2024-02-15T00:00:00Z"
- *                   - _id: "507f1f77bcf86cd799439016"
- *                     name: "Radha Rani"
- *                     hundiNo: "H123457"
- *                     collectionDate: "2024-02-20T00:00:00Z"
- *                 pagination:
- *                   total: 15
- *                   page: 1
- *                   pages: 2
- *       404:
- *         description: Group not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               success: false
- *               message: "Group not found"
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/GroupWithDonors'
  *       401:
  *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Group not found
  *         content:
  *           application/json:
  *             schema:
@@ -417,7 +314,7 @@ const {
  *               $ref: '#/components/schemas/Error'
  *
  *   put:
- *     summary: Update group
+ *     summary: Update a group
  *     tags: [Groups]
  *     security:
  *       - BearerAuth: []
@@ -428,28 +325,57 @@ const {
  *         schema:
  *           type: string
  *         description: Group ID
- *         example: "507f1f77bcf86cd799439012"
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Group'
+ *             $ref: '#/components/schemas/UpdateGroupRequest'
  *     responses:
  *       200:
- *         description: Group updated
+ *         description: Group updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Group'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/Group'
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Group not found
+ *         content:
+ *           application/json:
+ *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Group name already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *
  *   delete:
- *     summary: Delete group
+ *     summary: Delete a group
  *     tags: [Groups]
  *     security:
  *       - BearerAuth: []
@@ -460,16 +386,27 @@ const {
  *         schema:
  *           type: string
  *         description: Group ID
- *         example: "507f1f77bcf86cd799439012"
  *     responses:
  *       200:
- *         description: Group deleted
+ *         description: Group deleted successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Group'
- *       400:
- *         description: Validation error
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Group not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -507,19 +444,42 @@ const validateObjectId = (req, res, next) => {
   next();
 };
 
+// Add validation error handling middleware
+const handleValidationErrors = (req, res, next) => {
+  const errors = require("express-validator").validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors.array(),
+    });
+  }
+  next();
+};
+
 // Routes
-router.post("/", auth, groupValidation, createGroup);
+router.post("/", auth, groupValidation, handleValidationErrors, createGroup);
 
 router.get(
   "/",
   auth,
   [
     query("search").optional().trim(),
-    query("isActive").optional().isBoolean(),
-    query("page").optional().isInt({ min: 1 }),
-    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("isActive")
+      .optional()
+      .isBoolean()
+      .withMessage("isActive must be true or false"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
     query("sort").optional().trim(),
   ],
+  handleValidationErrors,
   getGroups
 );
 
@@ -529,13 +489,29 @@ router.get(
   validateObjectId,
   [
     query("search").optional().trim(),
-    query("status").optional().isIn(["pending", "collected", "skipped"]),
-    query("startDate").optional().isISO8601(),
-    query("endDate").optional().isISO8601(),
-    query("page").optional().isInt({ min: 1 }),
-    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("status")
+      .optional()
+      .isIn(["pending", "collected", "skipped"])
+      .withMessage("Invalid status value"),
+    query("startDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid start date format"),
+    query("endDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid end date format"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
     query("sort").optional().trim(),
   ],
+  handleValidationErrors,
   getGroupById
 );
 
@@ -545,8 +521,12 @@ router.put(
   validateObjectId,
   [
     ...groupValidation.map((validation) => validation.optional()),
-    body("isActive").optional().isBoolean(),
+    body("isActive")
+      .optional()
+      .isBoolean()
+      .withMessage("isActive must be true or false"),
   ],
+  handleValidationErrors,
   updateGroup
 );
 
