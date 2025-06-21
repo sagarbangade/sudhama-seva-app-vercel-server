@@ -1,6 +1,6 @@
 const { validationResult } = require("express-validator");
-const { Donation } = require("../models/donation.model");
-const { Donor } = require("../models/donor.model");
+const Donation = require("../models/donation.model");
+const Donor = require("../models/donor.model");
 const mongoose = require("mongoose");
 const {
   createErrorResponse,
