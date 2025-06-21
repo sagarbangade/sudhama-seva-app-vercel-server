@@ -110,6 +110,29 @@ const {
  *         - collectionDate
  *         - collectionTime
  *
+ *     UpdateDonationRequest:
+ *       type: object
+ *       properties:
+ *         amount:
+ *           type: number
+ *           minimum: 0
+ *           description: Updated donation amount in rupees
+ *           example: 1000
+ *         collectionDate:
+ *           type: string
+ *           format: date-time
+ *           description: Updated date and time of collection
+ *           example: "2024-01-15T10:30:00Z"
+ *         collectionTime:
+ *           type: string
+ *           pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+ *           description: Updated time of collection in HH:mm format
+ *           example: "10:30"
+ *         notes:
+ *           type: string
+ *           description: Updated notes about the donation
+ *           example: "Monthly donation collected"
+ *
  *     SkipDonationRequest:
  *       type: object
  *       properties:
@@ -247,14 +270,107 @@ const {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- */
-
-/**
- * @swagger
+ *
+ * /api/donations/{id}:
+ *   put:
+ *     summary: Update a donation record
+ *     description: Update an existing donation record. Only certain fields can be updated.
+ *     tags: [Donations]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Donation ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateDonationRequest'
+ *     responses:
+ *       200:
+ *         description: Donation updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/Donation'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Donation not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *
+ *   delete:
+ *     summary: Delete a donation record
+ *     description: Delete an existing donation record. This will also update the donor's status if needed.
+ *     tags: [Donations]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Donation ID
+ *     responses:
+ *       200:
+ *         description: Donation deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthError'
+ *       404:
+ *         description: Donation not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *
  * /api/donations/skip:
  *   post:
- *     summary: Skip a donation for a donor
- *     description: Mark a donor's donation as skipped for the current collection period. This will update the donor's status to 'skipped' and set the next collection date.
+ *     summary: Skip a donation collection
+ *     description: Mark a donor's collection as skipped for the current period
  *     tags: [Donations]
  *     security:
  *       - BearerAuth: []
@@ -266,7 +382,7 @@ const {
  *             $ref: '#/components/schemas/SkipDonationRequest'
  *     responses:
  *       200:
- *         description: Donation skipped successfully
+ *         description: Collection skipped successfully
  *         content:
  *           application/json:
  *             schema:
@@ -275,7 +391,10 @@ const {
  *                 - type: object
  *                   properties:
  *                     data:
- *                       $ref: '#/components/schemas/DonorStatus'
+ *                       type: object
+ *                       properties:
+ *                         donor:
+ *                           $ref: '#/components/schemas/Donor'
  *       400:
  *         description: Validation error
  *         content:
@@ -300,171 +419,6 @@ const {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- */
-
-/**
- * @swagger
- * /api/donations/monthly-status:
- *   get:
- *     summary: Get monthly donation status with pagination and search
- *     tags: [Donations]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: query
- *         name: year
- *         required: true
- *         schema:
- *           type: integer
- *       - in: query
- *         name: month
- *         required: true
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 12
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search donors by name, hundi number, or mobile number
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number for pagination
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of items per page
- *     responses:
- *       200:
- *         description: Monthly status retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     year:
- *                       type: integer
- *                     month:
- *                       type: integer
- *                     stats:
- *                       type: object
- *                       properties:
- *                         total:
- *                           type: integer
- *                         collected:
- *                           type: integer
- *                         pending:
- *                           type: integer
- *                         skipped:
- *                           type: integer
- *                         totalAmount:
- *                           type: number
- *                     statusReport:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           donor:
- *                             type: object
- *                             properties:
- *                               id:
- *                                 type: string
- *                               name:
- *                                 type: string
- *                               hundiNo:
- *                                 type: string
- *                               mobileNumber:
- *                                 type: string
- *                           status:
- *                             type: string
- *                             enum: [pending, collected, skipped]
- *                           donation:
- *                             type: object
- *                             nullable: true
- *                     pagination:
- *                       type: object
- *                       properties:
- *                         total:
- *                           type: integer
- *                         page:
- *                           type: integer
- *                         pages:
- *                           type: integer
- */
-
-/**
- * @swagger
- * /api/donations/{id}:
- *   put:
- *     summary: Update donation record
- *     tags: [Donations]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Donation ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Donation'
- *     responses:
- *       501:
- *         description: Not implemented
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *   delete:
- *     summary: Delete donation record
- *     tags: [Donations]
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Donation ID
- *     responses:
- *       501:
- *         description: Not implemented
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
-
-/**
- * @swagger
- * /api/donations/initialize-monthly:
- *   post:
- *     summary: Initialize monthly donations manually
- *     tags: [Donations]
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: Monthly donations initialized successfully
- *       500:
- *         description: Error initializing monthly donations
  */
 
 const router = express.Router();
@@ -537,6 +491,7 @@ router.post(
   handleValidationErrors,
   createDonation
 );
+
 router.post(
   "/skip",
   auth,

@@ -163,10 +163,8 @@ Swagger documentation is available at:
 ### Donation Management
 - POST `/api/donations` - Create new donation record
 - GET `/api/donations` - Get all donations (with pagination & filters)
-- GET `/api/donations/monthly-status` - Get monthly donation status
 - PUT `/api/donations/:id` - Update donation
 - DELETE `/api/donations/:id` - Delete donation
-- POST `/api/donations/initialize-monthly` - Initialize monthly donations
 
 ## Security Features
 - Password hashing with bcrypt
