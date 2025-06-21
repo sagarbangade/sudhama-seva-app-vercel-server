@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const rateLimit = require("express-rate-limit");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
 const { scheduleStatusUpdates } = require("./utils/cronJobs");
@@ -12,23 +11,6 @@ const { ERROR_MESSAGES, createErrorResponse } = require("./utils/errorHandler");
 require("dotenv").config();
 
 const app = express();
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later",
-});
-
-// Apply rate limiting to all routes
-app.use(limiter);
-
-// More strict rate limiting for auth routes
-const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // Limit each IP to 5 login/register requests per hour
-  message: "Too many login attempts, please try again later",
-});
 
 // Middleware
 app.use(express.json());
