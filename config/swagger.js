@@ -46,6 +46,64 @@ All API responses follow this standardized format:
 - 404: Not Found - Resource doesn't exist
 - 409: Conflict - Resource already exists or state conflict
 - 500: Internal Server Error - Unexpected server error
+
+### Error Handling:
+The API uses consistent error responses across all endpoints:
+
+1. **Validation Errors** (400):
+\`\`\`json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "field": "mobileNumber",
+      "message": "Please enter a valid 10-digit mobile number"
+    }
+  ]
+}
+\`\`\`
+
+2. **Authentication Errors** (401):
+\`\`\`json
+{
+  "success": false,
+  "message": "Authentication failed",
+  "errors": [
+    {
+      "code": "INVALID_TOKEN",
+      "message": "Token has expired"
+    }
+  ]
+}
+\`\`\`
+
+3. **Resource Not Found** (404):
+\`\`\`json
+{
+  "success": false,
+  "message": "Resource not found",
+  "error": "The requested resource does not exist"
+}
+\`\`\`
+
+4. **Duplicate Entry** (409):
+\`\`\`json
+{
+  "success": false,
+  "message": "Resource already exists",
+  "error": "A donor with this hundi number already exists"
+}
+\`\`\`
+
+5. **Server Error** (500):
+\`\`\`json
+{
+  "success": false,
+  "message": "Something went wrong",
+  "error": "Detailed error message in development mode only"
+}
+\`\`\`
       `,
       contact: {
         name: "API Support",
@@ -87,25 +145,10 @@ All API responses follow this standardized format:
               type: "string",
               example: "Error occurred while processing your request",
             },
-            errors: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  field: {
-                    type: "string",
-                    example: "email",
-                  },
-                  message: {
-                    type: "string",
-                    example: "Please enter a valid email address",
-                  },
-                  code: {
-                    type: "string",
-                    example: "VALIDATION_ERROR",
-                  },
-                },
-              },
+            error: {
+              type: "string",
+              description: "Detailed error message (only in development mode)",
+              example: "Detailed error information",
             },
           },
         },
@@ -144,15 +187,11 @@ All API responses follow this standardized format:
                 properties: {
                   field: {
                     type: "string",
-                    example: "password",
+                    example: "mobileNumber",
                   },
                   message: {
                     type: "string",
-                    example: "Password must be at least 6 characters long",
-                  },
-                  code: {
-                    type: "string",
-                    example: "MIN_LENGTH",
+                    example: "Please enter a valid 10-digit mobile number",
                   },
                 },
               },
@@ -181,7 +220,7 @@ All API responses follow this standardized format:
                   },
                   message: {
                     type: "string",
-                    example: "Invalid or expired token",
+                    example: "Token has expired",
                   },
                 },
               },

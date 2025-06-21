@@ -2,6 +2,65 @@ const { validationResult } = require("express-validator");
 const Group = require("../models/group.model");
 const Donor = require("../models/donor.model");
 const mongoose = require("mongoose");
+const {
+  createErrorResponse,
+  createSuccessResponse,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
+} = require("../utils/errorHandler");
+
+// Initialize default groups
+exports.initializeDefaultGroups = async (userId) => {
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+
+    const defaultGroups = [
+      {
+        name: "Group A",
+        area: "Default Area A",
+        description: "Default group for area A",
+        createdBy: userId,
+        isActive: true,
+      },
+      {
+        name: "Group B",
+        area: "Default Area B",
+        description: "Default group for area B",
+        createdBy: userId,
+        isActive: true,
+      },
+      {
+        name: "Group C",
+        area: "Default Area C",
+        description: "Default group for area C",
+        createdBy: userId,
+        isActive: true,
+      },
+    ];
+
+    // Check if any default groups already exist
+    const existingGroups = await Group.find({
+      name: { $in: defaultGroups.map((g) => g.name) },
+    }).session(session);
+
+    if (existingGroups.length > 0) {
+      return existingGroups;
+    }
+
+    // Create all default groups
+    const createdGroups = await Group.insertMany(defaultGroups, { session });
+
+    await session.commitTransaction();
+    return createdGroups;
+  } catch (error) {
+    await session.abortTransaction();
+    console.error("Error initializing default groups:", error);
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
 
 // Create a new group
 exports.createGroup = async (req, res) => {

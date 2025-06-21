@@ -3,6 +3,7 @@ const Donor = require("../models/donor.model");
 const { initializeDefaultGroups } = require("./group.controller");
 const Group = require("../models/group.model");
 const Donation = require("../models/donation.model");
+const mongoose = require("mongoose");
 
 // Helper function to check if donor has donation for current month
 const hasDonationForCurrentMonth = async (donorId) => {
@@ -26,7 +27,10 @@ const hasDonationForCurrentMonth = async (donorId) => {
 
 // Create a new donor
 exports.createDonor = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
+    session.startTransaction();
+
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -48,7 +52,7 @@ exports.createDonor = async (req, res) => {
     } = req.body;
 
     // Check if hundi number already exists
-    const existingDonor = await Donor.findOne({ hundiNo });
+    const existingDonor = await Donor.findOne({ hundiNo }).session(session);
     if (existingDonor) {
       return res.status(400).json({
         success: false,
@@ -57,15 +61,34 @@ exports.createDonor = async (req, res) => {
     }
 
     // Initialize default groups if none exist
-    const groupCount = await Group.countDocuments();
+    const groupCount = await Group.countDocuments().session(session);
+    let groupId = group;
+
     if (groupCount === 0) {
-      await initializeDefaultGroups(req.user.id);
+      try {
+        const defaultGroups = await initializeDefaultGroups(req.user.id);
+        if (!groupId && defaultGroups.length > 0) {
+          // Assign to Group A by default
+          const groupA = defaultGroups.find((g) => g.name === "Group A");
+          if (groupA) {
+            groupId = groupA._id;
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing default groups:", error);
+        return res.status(500).json({
+          success: false,
+          message:
+            "Failed to initialize default groups. Please create a group first.",
+        });
+      }
     }
 
-    // If no group specified, assign to Group A
-    let groupId = group;
+    // If no group specified or default group initialization failed, find Group A
     if (!groupId) {
-      const defaultGroup = await Group.findOne({ name: "Group A" });
+      const defaultGroup = await Group.findOne({ name: "Group A" }).session(
+        session
+      );
       if (!defaultGroup) {
         return res.status(500).json({
           success: false,
@@ -87,34 +110,72 @@ exports.createDonor = async (req, res) => {
     }
 
     // Create new donor
-    const donor = await Donor.create({
-      hundiNo,
-      name,
-      mobileNumber,
-      address,
-      googleMapLink,
-      collectionDate: initialCollectionDate,
-      group: groupId,
-      createdBy: req.user.id,
-    });
+    const donor = await Donor.create(
+      [
+        {
+          hundiNo,
+          name,
+          mobileNumber,
+          address,
+          googleMapLink,
+          collectionDate: initialCollectionDate,
+          group: groupId,
+          createdBy: req.user.id,
+          statusHistory: [
+            {
+              status: "pending",
+              date: new Date(),
+              notes: "Donor created",
+            },
+          ],
+        },
+      ],
+      { session }
+    );
 
-    await donor.populate([
+    await session.commitTransaction();
+
+    // Populate references
+    const populatedDonor = await Donor.findById(donor[0]._id).populate([
       { path: "createdBy", select: "name email" },
-      { path: "group", select: "name description" },
+      { path: "group", select: "name area" },
     ]);
 
     res.status(201).json({
       success: true,
       message: "Donor created successfully",
-      data: { donor },
+      data: { donor: populatedDonor },
     });
   } catch (error) {
+    await session.abortTransaction();
     console.error("Create donor error:", error);
+
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "A donor with this hundi number already exists",
+      });
+    }
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: Object.values(error.errors).map((err) => ({
+          field: err.path,
+          message: err.message,
+        })),
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Failed to create donor. Please try again.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
+  } finally {
+    session.endSession();
   }
 };
 

@@ -274,6 +274,9 @@ const router = express.Router();
  * /api/donors:
  *   post:
  *     summary: Create a new donor
+ *     description: |
+ *       Creates a new donor in the system. If no groups exist, it will automatically create default groups (A, B, C).
+ *       If no group is specified in the request, the donor will be assigned to Group A by default.
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -296,29 +299,41 @@ const router = express.Router();
  *                     data:
  *                       $ref: '#/components/schemas/Donor'
  *       400:
- *         description: Validation error
+ *         description: Validation error or duplicate hundi number
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ValidationError'
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/ValidationError'
+ *                 - type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: false
+ *                     message:
+ *                       type: string
+ *                       example: "A donor with this hundi number already exists"
  *       401:
  *         description: Not authorized
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AuthError'
- *       409:
- *         description: Hundi number already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       500:
- *         description: Server error
+ *         description: Server error or group initialization error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/Error'
+ *                 - type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: false
+ *                     message:
+ *                       type: string
+ *                       example: "Failed to initialize default groups. Please create a group first."
  *
  *   get:
  *     summary: Get all donors with pagination and filters
