@@ -80,7 +80,9 @@ exports.createDonor = async (req, res) => {
       initialCollectionDate = new Date(collectionDate);
     } else {
       const now = new Date();
-      initialCollectionDate = new Date(now.setMonth(now.getMonth() + 1));
+      const nextMonth = new Date(now);
+      nextMonth.setMonth(now.getMonth() + 1);
+      initialCollectionDate = nextMonth;
     }
 
     // Create new donor

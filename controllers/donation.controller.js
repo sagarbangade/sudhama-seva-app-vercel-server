@@ -51,9 +51,13 @@ exports.createDonation = async (req, res) => {
       { session }
     );
 
-    // Update donor status and set next collection date to one month after current collection
-    donor.collectionDate = new Date(collectionDate);
-    donor.collectionDate.setMonth(donor.collectionDate.getMonth() + 1);
+    // Update donor status and set next collection date
+    if (req.body.nextCollectionDate) {
+      donor.collectionDate = new Date(req.body.nextCollectionDate);
+    } else {
+      donor.collectionDate = new Date(collectionDate);
+      donor.collectionDate.setMonth(donor.collectionDate.getMonth() + 1);
+    }
     donor.status = "collected";
     donor.statusHistory.push({
       status: "collected",
