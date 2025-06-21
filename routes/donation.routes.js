@@ -222,8 +222,7 @@ const {
  *               $ref: '#/components/schemas/Error'
  *
  *   get:
- *     summary: Get all donations with filters
- *     description: Retrieve a paginated list of donations with optional filtering by donor, date range, and other criteria
+ *     summary: Get all donations
  *     tags: [Donations]
  *     security:
  *       - BearerAuth: []
@@ -233,48 +232,38 @@ const {
  *         schema:
  *           type: string
  *         description: Filter by donor ID
- *         example: "507f1f77bcf86cd799439011"
  *       - in: query
  *         name: startDate
  *         schema:
  *           type: string
  *           format: date
- *         description: Filter by collection date start (YYYY-MM-DD)
- *         example: "2024-01-01"
+ *         description: Filter by start date (YYYY-MM-DD)
  *       - in: query
  *         name: endDate
  *         schema:
  *           type: string
  *           format: date
- *         description: Filter by collection date end (YYYY-MM-DD)
- *         example: "2024-12-31"
+ *         description: Filter by end date (YYYY-MM-DD)
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
- *           minimum: 1
- *         description: Page number for pagination
- *         example: 1
+ *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
- *           minimum: 1
- *           maximum: 100
- *         description: Number of items per page
- *         example: 10
+ *         description: Items per page
  *       - in: query
  *         name: sort
  *         schema:
  *           type: string
- *           default: "-collectionDate"
- *         description: Sort field (prefix with - for descending)
- *         example: "-collectionDate"
+ *         description: Sort order
  *     responses:
  *       200:
- *         description: List of donations retrieved successfully
+ *         description: List of donations
  *         content:
  *           application/json:
  *             schema:
@@ -282,40 +271,10 @@ const {
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 data:
- *                   type: object
- *                   properties:
- *                     donations:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Donation'
- *                     pagination:
- *                       $ref: '#/components/schemas/Pagination'
- *             example:
- *               success: true
- *               data:
- *                 donations:
- *                   - _id: "507f1f77bcf86cd799439014"
- *                     donor:
- *                       _id: "507f1f77bcf86cd799439011"
- *                       name: "Krishna Das"
- *                       hundiNo: "H123456"
- *                       status: "collected"
- *                     amount: 1000
- *                     collectionDate: "2024-01-15T10:30:00Z"
- *                     collectionTime: "10:30"
- *                     notes: "Monthly donation collected"
- *                     collectedBy:
- *                       _id: "507f1f77bcf86cd799439013"
- *                       name: "Admin User"
- *                       email: "admin@example.com"
- *                     createdAt: "2024-01-15T10:30:00Z"
- *                     updatedAt: "2024-01-15T10:30:00Z"
- *                 pagination:
- *                   total: 25
- *                   page: 1
- *                   pages: 3
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Donation'
  *       401:
  *         description: Not authorized
  *         content:
@@ -540,6 +499,7 @@ const {
  *         required: true
  *         schema:
  *           type: string
+ *         description: Donation ID
  *     requestBody:
  *       required: true
  *       content:
@@ -547,11 +507,12 @@ const {
  *           schema:
  *             $ref: '#/components/schemas/Donation'
  *     responses:
- *       200:
- *         description: Donation updated successfully
- *       404:
- *         description: Donation not found
- *
+ *       501:
+ *         description: Not implemented
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *   delete:
  *     summary: Delete donation record
  *     tags: [Donations]
@@ -563,11 +524,14 @@ const {
  *         required: true
  *         schema:
  *           type: string
+ *         description: Donation ID
  *     responses:
- *       200:
- *         description: Donation deleted successfully
- *       404:
- *         description: Donation not found
+ *       501:
+ *         description: Not implemented
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 
 /**

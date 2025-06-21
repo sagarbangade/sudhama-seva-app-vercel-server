@@ -114,8 +114,7 @@ const router = express.Router();
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Register a new user account
- *     description: Create a new user account with name, email, and password. Password must be at least 6 characters long and contain at least one number and one uppercase letter.
+ *     summary: Register a new user
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -123,13 +122,6 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/RegisterRequest'
- *           examples:
- *             valid:
- *               summary: Valid registration data
- *               value:
- *                 name: "Krishna Das"
- *                 email: "krishna.das@example.com"
- *                 password: "Password123"
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -137,42 +129,8 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AuthResponse'
- *             example:
- *               success: true
- *               message: "User registered successfully"
- *               data:
- *                 user:
- *                   _id: "507f1f77bcf86cd799439011"
- *                   name: "Krishna Das"
- *                   email: "krishna.das@example.com"
- *                   isActive: true
- *                   createdAt: "2024-01-01T00:00:00Z"
- *                   updatedAt: "2024-01-01T00:00:00Z"
- *                 token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *       400:
- *         description: Validation error or user already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             examples:
- *               validation_error:
- *                 summary: Validation error
- *                 value:
- *                   success: false
- *                   message: "Validation error"
- *                   errors:
- *                     - field: "email"
- *                       message: "Please enter a valid email"
- *                     - field: "password"
- *                       message: "Password must contain at least one uppercase letter"
- *               user_exists:
- *                 summary: User already exists
- *                 value:
- *                   success: false
- *                   message: "User with this email already exists"
- *       500:
- *         description: Server error
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
@@ -184,7 +142,6 @@ const router = express.Router();
  * /api/auth/login:
  *   post:
  *     summary: Login user
- *     description: Authenticate user with email and password to receive JWT token
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -192,12 +149,6 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/LoginRequest'
- *           examples:
- *             valid:
- *               summary: Valid login credentials
- *               value:
- *                 email: "krishna.das@example.com"
- *                 password: "Password123"
  *     responses:
  *       200:
  *         description: Login successful
@@ -205,35 +156,8 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AuthResponse'
- *             example:
- *               success: true
- *               message: "Login successful"
- *               data:
- *                 user:
- *                   _id: "507f1f77bcf86cd799439011"
- *                   name: "Krishna Das"
- *                   email: "krishna.das@example.com"
- *                   isActive: true
- *                   lastLogin: "2024-01-15T10:30:00Z"
- *                   createdAt: "2024-01-01T00:00:00Z"
- *                   updatedAt: "2024-01-15T10:30:00Z"
- *                 token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *         headers:
- *           X-New-Token:
- *             description: New JWT token (if current token is about to expire)
- *             schema:
- *               type: string
  *       401:
  *         description: Invalid credentials
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               success: false
- *               message: "Invalid email or password"
- *       500:
- *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -245,7 +169,6 @@ const router = express.Router();
  * /api/auth/profile:
  *   get:
  *     summary: Get current user profile
- *     description: Retrieve the profile information of the currently authenticated user
  *     tags: [Auth]
  *     security:
  *       - BearerAuth: []
@@ -255,42 +178,9 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Profile retrieved successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     user:
- *                       $ref: '#/components/schemas/User'
- *             example:
- *               success: true
- *               message: "Profile retrieved successfully"
- *               data:
- *                 user:
- *                   _id: "507f1f77bcf86cd799439011"
- *                   name: "Krishna Das"
- *                   email: "krishna.das@example.com"
- *                   isActive: true
- *                   lastLogin: "2024-01-15T10:30:00Z"
- *                   createdAt: "2024-01-01T00:00:00Z"
- *                   updatedAt: "2024-01-15T10:30:00Z"
+ *               $ref: '#/components/schemas/User'
  *       401:
- *         description: Not authorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               success: false
- *               message: "Authentication token is required"
- *       500:
- *         description: Server error
+ *         description: Not authorized
  *         content:
  *           application/json:
  *             schema:

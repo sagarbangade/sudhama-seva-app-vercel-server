@@ -225,8 +225,7 @@ const {
  *               $ref: '#/components/schemas/Error'
  *
  *   get:
- *     summary: Get all groups with pagination and search
- *     description: Retrieve a paginated list of groups with optional search and filtering capabilities
+ *     summary: Get all groups
  *     tags: [Groups]
  *     security:
  *       - BearerAuth: []
@@ -235,41 +234,32 @@ const {
  *         name: search
  *         schema:
  *           type: string
- *         description: Search groups by name, area, or description
- *         example: "Mayapur"
+ *         description: Search by group name or area
  *       - in: query
  *         name: isActive
  *         schema:
  *           type: boolean
- *         description: Filter by active/inactive status
- *         example: true
+ *         description: Filter by active status
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
- *           minimum: 1
- *         description: Page number for pagination
- *         example: 1
+ *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
- *           minimum: 1
- *           maximum: 100
- *         description: Number of items per page
- *         example: 10
+ *         description: Items per page
  *       - in: query
  *         name: sort
  *         schema:
  *           type: string
- *           default: "name"
- *         description: Sort field (prefix with - for descending)
- *         example: "name"
+ *         description: Sort order
  *     responses:
  *       200:
- *         description: List of groups retrieved successfully
+ *         description: List of groups
  *         content:
  *           application/json:
  *             schema:
@@ -277,46 +267,10 @@ const {
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 data:
- *                   type: object
- *                   properties:
- *                     groups:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Group'
- *                     pagination:
- *                       $ref: '#/components/schemas/Pagination'
- *             example:
- *               success: true
- *               data:
- *                 groups:
- *                   - _id: "507f1f77bcf86cd799439012"
- *                     name: "Mayapur Zone"
- *                     area: "ISKCON Mayapur Campus"
- *                     description: "Devotees residing in Mayapur area including temple premises"
- *                     isActive: true
- *                     createdBy:
- *                       _id: "507f1f77bcf86cd799439013"
- *                       name: "Admin User"
- *                       email: "admin@example.com"
- *                     createdAt: "2024-01-15T10:30:00Z"
- *                     updatedAt: "2024-01-15T10:30:00Z"
- *                   - _id: "507f1f77bcf86cd799439015"
- *                     name: "Kolkata Zone"
- *                     area: "Kolkata Metropolitan Area"
- *                     description: "Devotees in Kolkata and surrounding areas"
- *                     isActive: true
- *                     createdBy:
- *                       _id: "507f1f77bcf86cd799439013"
- *                       name: "Admin User"
- *                       email: "admin@example.com"
- *                     createdAt: "2024-01-15T10:30:00Z"
- *                     updatedAt: "2024-01-15T10:30:00Z"
- *                 pagination:
- *                   total: 5
- *                   page: 1
- *                   pages: 1
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Group'
  *       401:
  *         description: Not authorized
  *         content:
@@ -464,7 +418,6 @@ const {
  *
  *   put:
  *     summary: Update group
- *     description: Update group information. All fields are optional - only provided fields will be updated.
  *     tags: [Groups]
  *     security:
  *       - BearerAuth: []
@@ -481,56 +434,22 @@ const {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateGroupRequest'
- *           examples:
- *             update_info:
- *               summary: Update group information
- *               value:
- *                 name: "Mayapur Zone Updated"
- *                 area: "ISKCON Mayapur Campus and surrounding areas"
- *                 description: "Updated description for Mayapur zone"
- *             update_status:
- *               summary: Update group status
- *               value:
- *                 isActive: false
+ *             $ref: '#/components/schemas/Group'
  *     responses:
  *       200:
- *         description: Group updated successfully
+ *         description: Group updated
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     group:
- *                       $ref: '#/components/schemas/Group'
+ *               $ref: '#/components/schemas/Group'
  *       400:
- *         description: Validation error or group name already exists
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: Group not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Not authorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *
  *   delete:
  *     summary: Delete group
- *     description: Permanently delete a group. This will fail if there are any donors assigned to this group.
  *     tags: [Groups]
  *     security:
  *       - BearerAuth: []
@@ -544,35 +463,13 @@ const {
  *         example: "507f1f77bcf86cd799439012"
  *     responses:
  *       200:
- *         description: Group deleted successfully
+ *         description: Group deleted
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Group deleted successfully"
+ *               $ref: '#/components/schemas/Group'
  *       400:
- *         description: Cannot delete group with existing donors
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               success: false
- *               message: "Cannot delete group with existing donors. Please reassign donors first."
- *       404:
- *         description: Group not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Not authorized
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:

@@ -392,78 +392,59 @@ const router = express.Router();
  *               $ref: '#/components/schemas/Error'
  *
  *   get:
- *     summary: Get all donors with pagination, search, and filters
- *     description: Retrieve a paginated list of donors with optional search and filtering capabilities
+ *     summary: Get all donors
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
  *     parameters:
  *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search donors by name, hundi number, or mobile number
- *         example: "Krishna"
- *       - in: query
- *         name: group
- *         schema:
- *           type: string
- *         description: Filter by group ID
- *         example: "507f1f77bcf86cd799439012"
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [pending, collected, skipped]
- *         description: Filter by donor status
- *         example: "pending"
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by collection date start (YYYY-MM-DD)
- *         example: "2024-01-01"
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by collection date end (YYYY-MM-DD)
- *         example: "2024-12-31"
- *       - in: query
- *         name: isActive
- *         schema:
- *           type: boolean
- *         description: Filter by active/inactive status
- *         example: true
- *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
- *           minimum: 1
- *         description: Page number for pagination
- *         example: 1
+ *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
- *           minimum: 1
- *           maximum: 100
- *         description: Number of items per page
- *         example: 10
+ *         description: Items per page
  *       - in: query
- *         name: sort
+ *         name: search
  *         schema:
  *           type: string
- *           default: "-createdAt"
- *         description: Sort field (prefix with - for descending)
- *         example: "-createdAt"
+ *         description: Search by name, hundi number, or mobile number
+ *       - in: query
+ *         name: group
+ *         schema:
+ *           type: string
+ *         description: Filter by group ID
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, collected, skipped]
+ *         description: Filter by status
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date (YYYY-MM-DD)
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status
  *     responses:
  *       200:
- *         description: List of donors retrieved successfully
+ *         description: List of donors
  *         content:
  *           application/json:
  *             schema:
@@ -471,51 +452,12 @@ const router = express.Router();
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 data:
- *                   type: object
- *                   properties:
- *                     donors:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Donor'
- *                     pagination:
- *                       $ref: '#/components/schemas/Pagination'
- *             example:
- *               success: true
- *               data:
- *                 donors:
- *                   - _id: "507f1f77bcf86cd799439011"
- *                     hundiNo: "H123456"
- *                     name: "Krishna Das"
- *                     mobileNumber: "9876543210"
- *                     address: "123 Bhakti Marg, Mayapur"
- *                     googleMapLink: "https://goo.gl/maps/example"
- *                     group:
- *                       _id: "507f1f77bcf86cd799439012"
- *                       name: "Mayapur Zone"
- *                       area: "ISKCON Mayapur Campus"
- *                     status: "pending"
- *                     collectionDate: "2024-02-15T00:00:00Z"
- *                     isActive: true
- *                     createdBy:
- *                       _id: "507f1f77bcf86cd799439013"
- *                       name: "Admin User"
- *                       email: "admin@example.com"
- *                     createdAt: "2024-01-15T10:30:00Z"
- *                     updatedAt: "2024-01-15T10:30:00Z"
- *                 pagination:
- *                   total: 50
- *                   page: 1
- *                   pages: 5
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Donor'
  *       401:
  *         description: Not authorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -600,7 +542,6 @@ const router = express.Router();
  *
  *   put:
  *     summary: Update donor
- *     description: Update donor information. All fields are optional - only provided fields will be updated.
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -611,62 +552,27 @@ const router = express.Router();
  *         schema:
  *           type: string
  *         description: Donor ID
- *         example: "507f1f77bcf86cd799439011"
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateDonorRequest'
- *           examples:
- *             update_status:
- *               summary: Update donor status
- *               value:
- *                 status: "collected"
- *             update_info:
- *               summary: Update donor information
- *               value:
- *                 name: "Krishna Das Updated"
- *                 mobileNumber: "9876543211"
- *                 address: "456 Bhakti Marg, Mayapur"
+ *             $ref: '#/components/schemas/Donor'
  *     responses:
  *       200:
- *         description: Donor updated successfully
+ *         description: Donor updated
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     donor:
- *                       $ref: '#/components/schemas/Donor'
+ *               $ref: '#/components/schemas/Donor'
  *       400:
- *         description: Validation error or hundi number already exists
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: Donor not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Not authorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *
  *   delete:
  *     summary: Delete donor
- *     description: Permanently delete a donor and all associated data
  *     tags: [Donors]
  *     security:
  *       - BearerAuth: []
@@ -677,29 +583,15 @@ const router = express.Router();
  *         schema:
  *           type: string
  *         description: Donor ID
- *         example: "507f1f77bcf86cd799439011"
  *     responses:
  *       200:
- *         description: Donor deleted successfully
+ *         description: Donor deleted
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Donor deleted successfully"
- *       404:
- *         description: Donor not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Not authorized
+ *               $ref: '#/components/schemas/Donor'
+ *       400:
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
