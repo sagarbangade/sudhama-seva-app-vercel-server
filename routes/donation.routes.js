@@ -5,6 +5,8 @@ const {
   createDonation,
   getDonations,
   skipDonation,
+  updateDonation,
+  deleteDonation,
 } = require("../controllers/donation.controller");
 
 /**
@@ -530,19 +532,19 @@ router.get(
   getDonations
 );
 
-// Add routes for individual donation operations if needed
-router.put("/:id", auth, validateObjectId, (req, res) => {
-  res.status(501).json({
-    success: false,
-    message: "Update donation functionality not implemented yet",
-  });
-});
+router.put(
+  "/:id",
+  auth,
+  validateObjectId,
+  handleValidationErrors,
+  updateDonation
+);
 
-router.delete("/:id", auth, validateObjectId, (req, res) => {
-  res.status(501).json({
-    success: false,
-    message: "Delete donation functionality not implemented yet",
-  });
-});
+router.delete(
+  "/:id",
+  auth,
+  validateObjectId,
+  deleteDonation
+);
 
 module.exports = router;

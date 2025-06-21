@@ -295,3 +295,61 @@ exports.skipDonation = async (req, res) => {
     session.endSession();
   }
 };
+
+// Update a donation record
+exports.updateDonation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, collectionDate, collectionTime, notes } = req.body;
+    const update = {};
+    if (amount !== undefined) update.amount = amount;
+    if (collectionDate !== undefined) update.collectionDate = collectionDate;
+    if (collectionTime !== undefined) update.collectionTime = collectionTime;
+    if (notes !== undefined) update.notes = notes;
+
+    const donation = await Donation.findByIdAndUpdate(id, update, { new: true });
+    if (!donation) {
+      return res.status(404).json({
+        success: false,
+        message: "Donation not found",
+      });
+    }
+    res.json({
+      success: true,
+      message: "Donation updated successfully",
+      data: { donation },
+    });
+  } catch (error) {
+    console.error("Update donation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update donation. Please try again.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// Delete a donation record
+exports.deleteDonation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const donation = await Donation.findByIdAndDelete(id);
+    if (!donation) {
+      return res.status(404).json({
+        success: false,
+        message: "Donation not found",
+      });
+    }
+    res.json({
+      success: true,
+      message: "Donation deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete donation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete donation. Please try again.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
