@@ -124,7 +124,7 @@ The API uses consistent error responses across all endpoints:
         description: "Production server",
       },
       {
-        url: "https://sudhama-seva-app-server.vercel.app",
+        url: "https://sudhama-seva-app-vercel-server.vercel.app/",
         description: "Vercel server",
       },
     ],
