@@ -862,7 +862,7 @@ router.put(
 );
 
 // Manual trigger for status updates (for testing)
-router.post("/trigger-status-update", auth, triggerStatusUpdate);
+router.post("/trigger-status-update", triggerStatusUpdate);
 
 router.put(
   "/:id",
