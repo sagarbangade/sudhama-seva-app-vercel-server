@@ -123,6 +123,10 @@ The API uses consistent error responses across all endpoints:
         url: "https://sudhama-seva-app-server.onrender.com",
         description: "Production server",
       },
+      {
+        url: "https://sudhama-seva-app-server.vercel.app",
+        description: "Vercel server",
+      },
     ],
     components: {
       securitySchemes: {
